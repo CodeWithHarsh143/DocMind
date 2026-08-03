@@ -1,0 +1,301 @@
+# DocMind — Complete Learning Roadmap & Architecture
+
+> A project-driven path to learning advanced Python, OOP, Async Programming, FastAPI, and backend systems design — by building a real AI-powered document intelligence platform.
+
+---
+
+## Part 1: Deep Architecture Overview
+
+Before writing a single line of code, you need to understand **what you're building and why every piece exists**. This is the mental model you'll carry into every phase.
+
+### 1.1 What DocMind Actually Does (User Journey)
+
+1. A user registers/logs in (JWT auth)
+2. They create/join an **Organization** (multi-tenant — like a workspace)
+3. They upload a document (PDF/DOCX/TXT)
+4. The system **doesn't process it immediately in the request** — it queues a background job (this is the async/queue part)
+5. A background worker picks up the job: extracts text → splits into chunks → generates embeddings (vector representations) → stores them in Postgres (with pgvector)
+6. The user opens a chat interface and asks a question about their document
+7. The backend: takes the question → embeds it → finds the most similar chunks in the DB (vector similarity search) → sends those chunks + question to an LLM → streams the answer back in real-time
+
+This single flow touches **every technology on your list**. That's why this project is a good showcase — nothing is decorative.
+
+### 1.2 System Components (The Big Picture)
+
+```
+┌─────────────┐         ┌──────────────────┐         ┌─────────────┐
+│   React     │ ◄─────► │   FastAPI App     │ ◄─────► │  PostgreSQL │
+│  Frontend   │  HTTP/  │  (REST + WS)      │ SQLAlchemy│ (+pgvector)│
+└─────────────┘  WS     └────────┬──────────┘         └─────────────┘
+                                  │
+                         ┌────────┴─────────┐
+                         │                  │
+                    ┌────▼────┐      ┌──────▼──────┐
+                    │  Redis  │      │  RQ Worker  │
+                    │ (broker,│ ◄───►│ (background │
+                    │  cache) │      │  processing)│
+                    └─────────┘      └─────────────┘
+```
+
+**Why each piece exists:**
+
+| Component | Job | Why not skip it |
+|---|---|---|
+| FastAPI | Handles HTTP requests, validates data, orchestrates everything | Core of backend |
+| PostgreSQL | Stores users, docs, chunks, chat history — permanent data | Relational integrity (a chunk *belongs to* a document *belongs to* a user) |
+| pgvector | Stores embeddings, does similarity search *inside* Postgres | Avoids needing a separate vector DB — simpler, still "production-realistic" |
+| Redis | Two jobs: (1) message broker for background tasks (2) cache for repeated queries | Without it, big file uploads would freeze your API |
+| RQ Worker | A separate Python process that does the slow work (embedding generation) away from the main API | If you did this in the request itself, the user would wait 30+ seconds staring at a spinner |
+| React | The interface — talks to FastAPI only via REST/WebSocket, never touches DB directly | Clean separation of concerns |
+
+### 1.3 The Golden Rule of Backend Architecture
+
+> **The frontend never talks to the database. The frontend never talks to Redis. Everything goes through the API.**
+
+This single rule is why backend systems are organized in layers. You'll implement this as **Routers → Services → Repositories/Models**:
+
+- **Router (API layer)**: receives HTTP request, validates input (Pydantic), calls a service. Knows *nothing* about SQL.
+- **Service (business logic layer)**: the actual "what should happen" logic — e.g., "check user owns this document, then queue it for processing." Knows nothing about HTTP.
+- **Model/Repository (data layer)**: talks to the database via SQLAlchemy. Knows nothing about HTTP or business rules.
+
+This layered separation *is* one of the most important OOP/architecture lessons in this whole project — you'll learn it hands-on in Phase 2.
+
+---
+
+## Part 2: How Concepts Will Be Taught
+
+Since you're building this to learn Python/OOP from scratch, here's the rule we'll follow throughout:
+
+**Before any new concept is used in code, you'll get:**
+1. **What it is** — plain definition
+2. **Why it exists** — what problem it solves that simpler code can't
+3. **Where exactly in DocMind we need it** — concrete, not abstract
+4. **A tiny standalone example** (not the project code) so you can experiment before wiring it into the real thing
+
+You write the actual implementation. I explain, review, and unblock when stuck — same as your Framer setup.
+
+---
+
+## Part 3: Phase-by-Phase Roadmap
+
+### **Phase 0 — Environment & Git Setup** (~1 day)
+
+**Goal:** Project skeleton exists, version-controlled, runnable.
+
+**Tasks:**
+- Install Python 3.12+, Postgres, Redis (Docker versions is fine even now, or local — your choice)
+- Create repo, initial commit, `.gitignore`
+- Set up virtual environment (`venv` or `uv`)
+- Folder structure (I'll explain each folder's *purpose* when we get here, not just dump a structure)
+
+**Concepts introduced:** virtual environments (why isolated dependencies matter), basic Git branching workflow (you already know this from `holidays` contributions — we'll reuse that muscle).
+
+---
+
+### **Phase 1 — Core FastAPI + Pydantic + Auth Basics** (~1 week)
+
+**Goal:** A working API with user registration/login, no AI yet.
+
+**What you'll build:**
+- `User` model (SQLAlchemy)
+- Register/Login endpoints
+- Password hashing (bcrypt)
+- JWT token generation & validation
+- Protected route (e.g., `/me`)
+
+**New concepts taught as we hit them:**
+- **Classes & `__init__`** — every SQLAlchemy model is a Python class; you'll learn constructors by defining `User`
+- **Inheritance** — SQLAlchemy's `Base` class, Pydantic's `BaseModel` — "why do we inherit from this?"
+- **Pydantic models vs SQLAlchemy models** — this trips up everyone at first: one validates API data, the other represents DB rows. You'll learn *why two separate classes exist for what looks like "the same" User.
+- **Dependency Injection** — FastAPI's `Depends()` — one of the most important FastAPI-specific patterns. You'll learn it through `get_current_user()` and `get_db()`.
+- **Decorators (basic)** — `@app.post(...)` — what a decorator actually does under the hood (brief intro, not deep dive yet)
+
+**Why this phase matters:** Auth is the backbone every other feature depends on. Get this solid before touching AI features.
+
+---
+
+### **Phase 2 — Layered Architecture: Organizations, Documents, Relationships** (~1 week)
+
+**Goal:** Multi-tenant data model. Users belong to Orgs, Orgs have Documents.
+
+**What you'll build:**
+- `Organization`, `Document` models
+- Foreign keys & relationships (`User → Organization`, `Organization → Document`)
+- CRUD endpoints, but properly layered (Router → Service → Model)
+- Role-based access (org admin vs member)
+- Alembic migrations set up (from here on, every schema change goes through a migration)
+
+**New concepts taught:**
+- **OOP: Composition vs Inheritance** — a `Document` *has an* `Organization` (composition) — you'll see why this matters vs incorrectly trying to inherit
+- **SQLAlchemy relationships** (`relationship()`, `back_populates`) — how Python objects mirror foreign keys
+- **Class methods vs instance methods vs static methods** — you'll hit this naturally when writing service classes (e.g., `DocumentService.get_by_id()` as classmethod vs instance-based service)
+- **Encapsulation** — why service layer hides DB logic from routers (this is where the "layers" idea from Part 1.3 becomes real code)
+- **Enums** — for roles (`ADMIN`, `MEMBER`) — Python's `Enum` class, why it's safer than raw strings
+
+**Why this phase matters:** This is where you learn to structure a *real* backend, not toy CRUD. This pattern repeats for the rest of the project.
+
+---
+
+### **Phase 3 — File Upload & Async Basics** (~4-5 days)
+
+**Goal:** Users can upload files; API responds instantly instead of blocking.
+
+**What you'll build:**
+- File upload endpoint (multipart/form-data)
+- Store file (local disk first, S3-compatible later if you want)
+- Text extraction (PDF/DOCX parsing libraries)
+- `async def` route handlers properly (not just decoration — actual understanding)
+
+**New concepts taught:**
+- **Sync vs Async — the actual mental model.** Not "async is faster," but: "async lets one process handle many waiting requests at once, because I/O (disk, network, DB) involves *waiting*, and while waiting, Python can do other work." You'll learn `async`/`await`, and *why* `def` vs `async def` matters in FastAPI specifically.
+- **Coroutines** — what `await` actually does under the hood (pauses and resumes, doesn't block)
+- **Context managers (`with` / `async with`)** — used for file handling and DB sessions — what `__enter__`/`__exit__` do (a real OOP dunder-method lesson)
+
+**Why this phase matters:** Async is the single most misunderstood FastAPI concept for beginners. We isolate it here, away from AI complexity, so you learn it cleanly.
+
+---
+
+### **Phase 4 — Redis + Background Queue (RQ)** (~1 week)
+
+**Goal:** Heavy processing (chunking + embeddings) happens outside the request-response cycle.
+
+**What you'll build:**
+- Redis connection setup
+- RQ queue + worker process
+- `process_document(doc_id)` background task: extract → chunk → (stub embeddings for now)
+- Job status tracking (`pending` → `processing` → `done`) so frontend can poll or get notified
+
+**New concepts taught:**
+- **Producer-consumer pattern** — a core CS concept, not Python-specific, but you'll *finally* see it concretely: API produces jobs, worker consumes them
+- **Processes vs threads vs async (clarified together)** — now that you know async, this is the moment to cleanly separate all three in your head, since RQ workers run in a *separate process*, not just async
+- **Idempotency** — why background jobs need to handle "what if this runs twice"
+
+**Why this phase matters:** This is the #1 "this looks like a real backend engineer built it" signal in interviews.
+
+---
+
+### **Phase 5 — Embeddings, pgvector & RAG Pipeline** (~1.5 weeks)
+
+**Goal:** The actual AI feature — chunk documents, embed them, retrieve relevant chunks, generate answers.
+
+**What you'll build:**
+- Chunking strategy (fixed-size vs sentence-aware — you'll implement one, understand tradeoffs of others)
+- Embedding generation (via API — OpenAI/Cohere, or a local model)
+- `pgvector` column type, similarity search query
+- RAG orchestration: retrieve top-k chunks → build prompt → call LLM
+- Streaming response (Server-Sent Events or WebSocket)
+
+**New concepts taught:**
+- **Strategy Pattern (OOP)** — different chunking strategies as interchangeable classes (`FixedSizeChunker`, `SentenceChunker`) implementing a common interface — a genuinely important design pattern, taught exactly where it's needed
+- **Abstract Base Classes (`ABC`, `@abstractmethod`)** — how Python enforces "every chunker must implement `.chunk()`"
+- **Generators & async generators** — for streaming LLM responses token-by-token, `yield` vs `async for`
+- **Vector similarity concepts** (cosine similarity) — enough math to reason about it, not a full ML course
+
+**Why this phase matters:** This is the heart of the "AI-powered" claim in your showcase — and where abstract OOP patterns finally *earn* their place instead of feeling academic.
+
+---
+
+### **Phase 6 — Caching, Rate Limiting, Auth Hardening** (~4-5 days)
+
+**Goal:** Production-grade backend concerns.
+
+**What you'll build:**
+- Redis caching for repeated queries (cache-aside pattern)
+- Rate limiting per user (token bucket, via Redis)
+- Refresh token flow, token blacklist on logout
+- Proper error handling (custom exception classes + FastAPI exception handlers)
+
+**New concepts taught:**
+- **Custom Exceptions (inheriting from `Exception`)** — real OOP inheritance use case: `DocumentNotFoundError(Exception)`, `UnauthorizedError(Exception)`
+- **Decorators (deeper)** — writing your *own* decorator for rate limiting (this closes the loop from the brief intro in Phase 1)
+- **Cache invalidation strategy** — the "two hard problems in CS" joke becomes real here
+
+---
+
+### **Phase 7 — React Frontend Integration** (~1 week, lighter focus)
+
+**Goal:** Functional UI — not the focus, but needs to work well.
+
+**What you'll build:**
+- Auth pages, document upload/list, chat interface with streaming
+- Consuming REST + WebSocket/SSE from FastAPI
+
+We'll keep this pragmatic — functional and clean, not over-engineered, since your focus is backend.
+
+---
+
+### **Phase 8 — Docker & Deployment** (~4-5 days)
+
+**Goal:** Whole system runs with `docker-compose up`.
+
+**What you'll build:**
+- Dockerfile for FastAPI app, worker, React
+- `docker-compose.yml` orchestrating Postgres, Redis, API, Worker, Frontend
+- Environment variable management (`.env`, secrets handling)
+
+**New concepts taught:**
+- **Multi-container orchestration** — why worker and API are separate containers despite sharing code
+- **12-factor app config principles** — brief, practical, relevant for interviews
+
+---
+
+### **Phase 9 (Optional, Stretch) — Polish for Showcase**
+
+- Document summarization / auto-tagging (reuses your RAG pipeline knowledge)
+- Basic tests (pytest) for critical paths — auth, upload, RAG retrieval
+- README with architecture diagram (you'll be able to draw this yourself by the end!)
+- Deploy a live demo (Railway/Render for backend, Vercel for frontend)
+
+---
+
+## Part 4: What to Learn *Alongside* Each Phase (Reference List)
+
+You don't need to pre-study these — they're introduced exactly when needed (per Part 2's teaching rule), but here's the master list for your own tracking:
+
+**Python/OOP:**
+- Classes, `__init__`, inheritance, composition
+- Class vs static vs instance methods
+- Abstract Base Classes, interfaces
+- Dunder methods (`__enter__`, `__exit__`, `__repr__`)
+- Enums, custom exceptions
+- Decorators (built-in and custom)
+- Generators, async generators
+- Type hints (used everywhere with Pydantic/FastAPI)
+
+**Async:**
+- `async`/`await`, coroutines
+- Event loop (conceptual understanding)
+- `asyncio` basics
+
+**FastAPI/Pydantic:**
+- Dependency injection (`Depends`)
+- Request/response models, validators
+- Background tasks vs real queues
+- WebSockets / SSE
+
+**Data layer:**
+- SQLAlchemy ORM (models, relationships, sessions)
+- Alembic migrations
+- PostgreSQL basics (indexes, foreign keys)
+- pgvector basics
+
+**Infra:**
+- Redis (caching, pub/sub basics, as a broker)
+- RQ or Celery (pick RQ first, as discussed)
+- Docker, docker-compose
+- JWT (access/refresh token theory)
+
+---
+
+## How We'll Work Through This
+
+Same rules as Framer:
+1. One phase at a time — we don't jump ahead
+2. Before new code, concept gets explained (what/why/where)
+3. You write the implementation
+4. You bring me the code or the error when stuck — I review/debug, don't just hand you the answer
+5. Full file paths shown whenever I do give you code/scaffolding
+
+---
+
+**Next step:** Confirm this roadmap works for you, then we start Phase 0 — environment setup and repo skeleton.
