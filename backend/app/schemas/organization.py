@@ -21,4 +21,5 @@ class OrganizationMemberResponse(BaseModel):
     organization_id: int
     role: RoleEnum
 
+    # for database model to pydantic model conversion
     model_config = ConfigDict(from_attributes=True)
