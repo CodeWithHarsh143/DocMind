@@ -22,3 +22,12 @@ class OrganizationMemberResponse(BaseModel):
     role: RoleEnum
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrganizationWithMembersResponse(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    members: list[OrganizationMemberResponse] = []
+
+    model_config = {"from_attributes": True}
