@@ -23,3 +23,12 @@ class OrganizationMemberResponse(BaseModel):
 
     # for database model to pydantic model conversion
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrganizationWithMembersResponse(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    members: list[OrganizationMemberResponse] = []
+
+    model_config = {"from_attributes": True}
