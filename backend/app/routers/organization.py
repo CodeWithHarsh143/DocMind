@@ -31,7 +31,7 @@ def add_member(
     user_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    role: str = RoleEnum.USER,
+    role: RoleEnum = RoleEnum.USER,
 ):
     OrganizationService.require_admin(db, org_id, current_user.id)
-    return OrganizationService.add_member(db, org_id, current_user.id)
+    return OrganizationService.add_member(db, org_id, user_id, role)

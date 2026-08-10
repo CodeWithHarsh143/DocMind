@@ -10,13 +10,16 @@ class DocumentServices:
     def create(db: Session, doc_data: DocumentCreate, current_user: User) -> Document:
         # Checking if user is in organization
         OrganizationService.required_membership(
-            db, current_user.id, doc_data.organization_id
+            db,
+            doc_data.organization_id,
+            current_user.id,
         )
 
         new_doc = Document(
             title=doc_data.title,
             content=doc_data.content,
             organization_id=doc_data.organization_id,
+            owner_id=current_user.id,
         )
         db.add(new_doc)
         db.commit()
@@ -25,7 +28,7 @@ class DocumentServices:
         return new_doc
 
     @staticmethod
-    def list_of_orginizations(
+    def list_of_documents(
         db: Session, organization_id: int, current_user: User
     ) -> list[Document]:
         # Checking if user is in organization

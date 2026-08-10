@@ -31,4 +31,4 @@ class OrganizationWithMembersResponse(BaseModel):
     created_at: datetime
     members: list[OrganizationMemberResponse] = []
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

@@ -18,7 +18,7 @@ class Organization(Base):
     name = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     members = relationship("OrganizationMember", back_populates="organization")
-    doucments = relationship("Document", back_populates="organization")
+    documents = relationship("Document", back_populates="organization")
 
 
 class OrganizationMember(Base):

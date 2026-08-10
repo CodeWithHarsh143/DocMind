@@ -10,7 +10,7 @@ class OrganizationService:
     def create(
         db: Session, org_data: OrganizationCreate, current_user: User
     ) -> Organization | None:
-        new_org = Organization(org_data.name)
+        new_org = Organization(name=org_data.name)
         db.add(new_org)
         db.commit()
         db.refresh(new_org)
@@ -53,6 +53,10 @@ class OrganizationService:
         db: Session, organization_id: int, user_id: int
     ) -> OrganizationMember:
         membership = OrganizationService.is_member(db, organization_id, user_id)
+        if membership is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="You are not an admin"
+            )
         if membership.role != RoleEnum.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Your are not a admin"
@@ -60,7 +64,12 @@ class OrganizationService:
         return membership
 
     @staticmethod
-    def add_member(db: Session, organization_id: int, user_id: int, role: str):
+    def add_member(
+        db: Session,
+        organization_id: int,
+        user_id: int,
+        role: RoleEnum = RoleEnum.USER,
+    ):
         alredy = OrganizationService.is_member(db, organization_id, user_id)
 
         if alredy is not None:

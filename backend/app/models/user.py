@@ -11,5 +11,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    organization = relationship("Organization", back_populates="members")
+    organization_members = relationship(
+        "OrganizationMember", back_populates="user"
+    )
     documents = relationship("Document", back_populates="owner")
