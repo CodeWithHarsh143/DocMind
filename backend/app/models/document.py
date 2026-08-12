@@ -15,3 +15,4 @@ class Document(Base):
     owner = relationship("User", back_populates="documents")
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     organization = relationship("Organization", back_populates="documents")
+    file_path = Column(String, nullable=True)
