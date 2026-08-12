@@ -10,9 +10,7 @@ class DocumentServices:
     def create(db: Session, doc_data: DocumentCreate, current_user: User) -> Document:
         # Checking if user is in organization
         OrganizationService.required_membership(
-            db,
-            doc_data.organization_id,
-            current_user.id,
+            db, doc_data.organization_id, current_user.id
         )
 
         new_doc = Document(
@@ -20,6 +18,7 @@ class DocumentServices:
             content=doc_data.content,
             organization_id=doc_data.organization_id,
             owner_id=current_user.id,
+            file_path=doc_data.file_path,
         )
         db.add(new_doc)
         db.commit()

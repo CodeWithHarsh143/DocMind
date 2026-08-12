@@ -6,6 +6,7 @@ class DocumentCreate(BaseModel):
     title: str
     content: str
     organization_id: int
+    file_path: str
 
 
 class DocumentResponse(BaseModel):
