@@ -4,7 +4,6 @@ from datetime import datetime
 
 class DocumentCreate(BaseModel):
     title: str
-    content: str
     organization_id: int
     file_path: str
 
