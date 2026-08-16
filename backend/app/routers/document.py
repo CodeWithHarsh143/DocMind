@@ -9,6 +9,8 @@ from app.models import User
 from app.services.document_service import DocumentService
 from app.services.organization_service import OrganizationService
 import uuid
+from app.tasks.document_tasks import process_document_tasks
+from app.queue import document_queue
 
 UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "storage", "uploads"
@@ -66,4 +68,6 @@ async def upload_document(
         organization_id=organization_id,
         file_path=file_path,
     )
-    return DocumentService.create(db, doc_data, current_user)
+    document = DocumentService.create(db, doc_data, current_user)
+    document_queue.enqueue(process_document_tasks, document.id)
+    return document
