@@ -15,7 +15,7 @@ def process_document_tasks(document_id: int):
         extracted_text = extract_text_from_document(document.file_path)
         document.content = extracted_text
         document.processing_status = "completed"
-        document.commit()
+        db.commit()
     except Exception as e:
         document.processing_status = "failed"
         db.commit()

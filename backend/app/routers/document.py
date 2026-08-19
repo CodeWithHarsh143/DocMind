@@ -2,6 +2,7 @@ import aiofiles
 import os
 from fastapi import Depends, APIRouter, UploadFile, Form, File, HTTPException
 from sqlalchemy.orm import Session
+from app.models.document import Document
 from app.routers.auth import get_current_user
 from app.database import get_db
 from app.schemas.document import DocumentCreate, DocumentResponse
@@ -68,6 +69,26 @@ async def upload_document(
         organization_id=organization_id,
         file_path=file_path,
     )
-    document = DocumentService.create(db, doc_data, current_user)
+    try:
+        document = DocumentService.create(db, doc_data, current_user)
+    except Exception:
+        os.remove(file_path)
+        raise
     document_queue.enqueue(process_document_tasks, document.id)
+    return document
+
+
+@router.get("/{document_id}", response_model=DocumentResponse)
+def get_document(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document Not Found")
+    OrganizationService.required_membership(
+        db, document.organization_id, current_user.id
+    )
     return document
