@@ -70,12 +70,12 @@ class OrganizationService:
         user_id: int,
         role: RoleEnum = RoleEnum.USER,
     ):
-        alredy = OrganizationService.is_member(db, organization_id, user_id)
+        already = OrganizationService.is_member(db, organization_id, user_id)
 
-        if alredy is not None:
+        if already is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="member is alredy in organization",
+                detail="member is already in organization",
             )
         membership = OrganizationMember(
             user_id=user_id, organization_id=organization_id, role=role
