@@ -1,0 +1,47 @@
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from openai import OpenAI
+from app.models.chunk import DocumentChunk
+from app.config import settings
+
+
+client = OpenAI(api_key=settings.openai_api_key)
+
+
+def search_similar_chunks(
+    db: Session, query_embedding: list[float], organization_id: int, top_k: int = 5
+):
+    return db.scalars(
+        select(DocumentChunk)
+        .filter(DocumentChunk.organization_id == organization_id)
+        .order_by(DocumentChunk.embedding.cosine_distance(query_embedding))
+        .limit(top_k)
+    ).all()
+
+
+def build_rag_propmt(question: str, chunks: list[DocumentChunk]) -> str:
+    context = "\n\n---\n\n".join([chunk.content for chunk in chunks])
+
+    prompt = f"""You are a helpful assistant answering questions based on the provided documents.
+
+    Context from documents:
+    {context}
+
+    Question: {question}
+
+    Answer the question using only the information from the context above. If the context doesn't contain relevant information, say so."""
+
+    return prompt
+
+
+async def stream_rag_answer(question: str, chunks: list[DocumentChunk]):
+    prompt = build_rag_propmt(question, chunks)
+    stream = client.chat.completions.create(
+        model="chatgpt-4o-latest",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+
+    for chunk in stream:
+        if chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
