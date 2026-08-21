@@ -5,7 +5,10 @@ from app.models.chunk import DocumentChunk
 from app.config import settings
 
 
-client = OpenAI(api_key=settings.openai_api_key)
+client = OpenAI(
+    api_key=settings.gemini_api_key,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
 
 
 def search_similar_chunks(
@@ -37,7 +40,7 @@ def build_rag_propmt(question: str, chunks: list[DocumentChunk]) -> str:
 async def stream_rag_answer(question: str, chunks: list[DocumentChunk]):
     prompt = build_rag_propmt(question, chunks)
     stream = client.chat.completions.create(
-        model="chatgpt-4o-latest",
+        model="gemini-3.6-flash",
         messages=[{"role": "user", "content": prompt}],
         stream=True,
     )
