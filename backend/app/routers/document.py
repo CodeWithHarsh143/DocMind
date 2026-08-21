@@ -15,6 +15,8 @@ import uuid
 from app.tasks.document_tasks import process_document_tasks
 from app.queue import document_queue
 from app.services.rag_service import search_similar_chunks,stream_rag_answer
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+
 UPLOAD_DIR = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "storage", "uploads"
 )
@@ -43,13 +45,18 @@ async def upload_document(
     file: UploadFile = File(...),
     organization_id: int = Form(...),
 ):
-    # Checking MemeberShip
+    # Checking membership
     OrganizationService.required_membership(db, organization_id, current_user.id)
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="File does not exist")
     # type of file
-    extension = os.path.splitext(file.filename)[1]
+    extension = os.path.splitext(file.filename)[1].lower()
+    if extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
 
     unique_name = f"{uuid.uuid4()}{extension}"
 
@@ -108,7 +115,7 @@ async def chat_with_document(
     if not chunks :
         raise HTTPException(
             status_code=404,
-            detail="No relevent documents found"
+            detail="No relevant documents found"
         )
     return StreamingResponse(
         stream_rag_answer(question,chunks),

@@ -8,13 +8,6 @@ from app.schemas.document import DocumentCreate
 class DocumentService:
     @staticmethod
     def create(db: Session, doc_data: DocumentCreate, current_user: User) -> Document:
-        # Checking if user is in organization
-        OrganizationService.required_membership(
-            db,
-            doc_data.organization_id,
-            current_user.id,
-        )
-
         new_doc = Document(
             title=doc_data.title,
             organization_id=doc_data.organization_id,

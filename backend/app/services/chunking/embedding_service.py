@@ -2,17 +2,26 @@ from openai import OpenAI
 from app.config import settings
 import tiktoken
 
-client = OpenAI(api_key=settings.openai_api_key)
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
-EMBEDDING_MODEL = "text-embedding-3-small"
+client = OpenAI(
+    api_key=settings.gemini_api_key,
+    base_url=GEMINI_BASE_URL,
+)
+
+EMBEDDING_MODEL = "gemini-embedding-001"
+EMBEDDING_DIMENSIONS = 1536
 
 
 def generate_embedding(text: str) -> list[float]:
-
-    response = client.embeddings.create(input=text, model=EMBEDDING_MODEL)
+    response = client.embeddings.create(
+        input=text,
+        model=EMBEDDING_MODEL,
+        dimensions=EMBEDDING_DIMENSIONS,
+    )
     return response.data[0].embedding
 
 
-def count_token(text: str, model: str = EMBEDDING_MODEL) -> int:
-    encoding = tiktoken.encoding_for_model(model)
+def count_token(text: str, encoding_name: str = "cl100k_base") -> int:
+    encoding = tiktoken.get_encoding(encoding_name)
     return len(encoding.encode(text))

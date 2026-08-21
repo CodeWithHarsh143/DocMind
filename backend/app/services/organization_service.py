@@ -44,7 +44,7 @@ class OrganizationService:
         if membership is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not a member on this organization",
+                detail="You are not a member of this organization",
             )
         return membership
 
@@ -59,7 +59,7 @@ class OrganizationService:
             )
         if membership.role != RoleEnum.ADMIN:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Your are not a admin"
+                status_code=status.HTTP_403_FORBIDDEN, detail="You are not an admin"
             )
         return membership
 
