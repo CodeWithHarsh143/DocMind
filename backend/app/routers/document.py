@@ -7,14 +7,16 @@ from app.routers.auth import get_current_user
 from app.models.document import Document
 from app.database import get_db
 from app.schemas.document import DocumentCreate, DocumentResponse
-from app.models import User, organization
+from app.models import User
 from app.services.chunking.embedding_service import generate_embedding
 from app.services.document_service import DocumentService
 from app.services.organization_service import OrganizationService
 import uuid
 from app.tasks.document_tasks import process_document_tasks
 from app.queue import document_queue
-from app.services.rag_service import search_similar_chunks,stream_rag_answer
+from app.services.rag_service import search_similar_chunks, stream_rag_answer
+from app.services.cache_service import get_cached_answer
+
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
 UPLOAD_DIR = os.path.join(
@@ -102,23 +104,31 @@ def get_document(
     )
     return document
 
+
 @router.post("/chat/{organization_id}")
 async def chat_with_document(
-        organization_id:int,
-        question:str,
-        current_user:User = Depends(get_current_user),
-        db:Session = Depends(get_db)
+    organization_id: int,
+    question: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    OrganizationService.required_membership(db=db,organization_id=organization_id,user_id=current_user.id)
-    query_embedding = generate_embedding(question)
-    chunks = search_similar_chunks(db,query_embedding,organization_id)
-    if not chunks :
-        raise HTTPException(
-            status_code=404,
-            detail="No relevant documents found"
-        )
-    return StreamingResponse(
-        stream_rag_answer(question,chunks),
-        media_type="text/event-stream"
+    OrganizationService.required_membership(
+        db=db, organization_id=organization_id, user_id=current_user.id
     )
+    cached = get_cached_answer(organization_id=organization_id, question=question)
+    if cached:
 
+        async def cached_stream():
+            yield cached
+
+        StreamingResponse(cached_stream(), media_type="text/event-stream")
+    query_embedding = generate_embedding(question)
+    chunks = search_similar_chunks(db, query_embedding, organization_id)
+    if not chunks:
+        raise HTTPException(status_code=404, detail="No relevant documents found")
+    return StreamingResponse(
+        stream_rag_answer(
+            question=question, chunks=chunks, organization_id=organization_id
+        ),
+        media_type="text/event-stream",
+    )
