@@ -1,9 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from openai import OpenAI
+from app.models import organization
 from app.models.chunk import DocumentChunk
 from app.config import settings
-
+from app.services.cache_service import set_cached_key
 
 client = OpenAI(
     api_key=settings.gemini_api_key,
@@ -37,7 +38,9 @@ def build_rag_propmt(question: str, chunks: list[DocumentChunk]) -> str:
     return prompt
 
 
-async def stream_rag_answer(question: str, chunks: list[DocumentChunk]):
+async def stream_rag_answer(
+    question: str, chunks: list[DocumentChunk], organization_id: int
+):
     prompt = build_rag_propmt(question, chunks)
     stream = client.chat.completions.create(
         model="gemini-3.6-flash",
@@ -45,6 +48,12 @@ async def stream_rag_answer(question: str, chunks: list[DocumentChunk]):
         stream=True,
     )
 
+    full_answer = ""
     for chunk in stream:
         if chunk.choices[0].delta.content:
-            yield chunk.choices[0].delta.content
+            token = chunk.choices[0].delta.content
+            full_answer += token
+            yield token
+    set_cached_key(
+        organization_id=organization_id, question=question, answer=full_answer
+    )
