@@ -2,8 +2,13 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from app.config import settings
+import secrets
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
 def hash_password(password: str) -> str:
