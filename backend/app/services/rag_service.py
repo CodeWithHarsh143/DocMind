@@ -1,7 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from openai import OpenAI
-from app.models import organization
 from app.models.chunk import DocumentChunk
 from app.config import settings
 from app.services.cache_service import set_cached_key

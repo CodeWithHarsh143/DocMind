@@ -9,7 +9,7 @@ from app.core.security import (
 )
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, UserResponse
+from app.schemas.user import UserCreate, UserResponse
 
 from fastapi.security import OAuth2PasswordRequestForm
 

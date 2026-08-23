@@ -1,8 +1,12 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 from app.models.organization import Organization, OrganizationMember, RoleEnum
 from app.models.user import User
 from app.schemas.organization import OrganizationCreate
+from app.core.exceptions import (
+    NotAMemberException,
+    NotAnAdminException,
+    AlreadyMemberException,
+)
 
 
 class OrganizationService:
@@ -42,10 +46,7 @@ class OrganizationService:
     ) -> OrganizationMember:
         membership = OrganizationService.is_member(db, organization_id, user_id)
         if membership is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not a member of this organization",
-            )
+            raise NotAMemberException()
         return membership
 
     @staticmethod
@@ -54,13 +55,9 @@ class OrganizationService:
     ) -> OrganizationMember:
         membership = OrganizationService.is_member(db, organization_id, user_id)
         if membership is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="You are not an admin"
-            )
+            raise NotAMemberException()
         if membership.role != RoleEnum.ADMIN:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="You are not an admin"
-            )
+            raise NotAnAdminException()
         return membership
 
     @staticmethod
@@ -73,10 +70,7 @@ class OrganizationService:
         already = OrganizationService.is_member(db, organization_id, user_id)
 
         if already is not None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="member is already in organization",
-            )
+            raise AlreadyMemberException()
         membership = OrganizationMember(
             user_id=user_id, organization_id=organization_id, role=role
         )
