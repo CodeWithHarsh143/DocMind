@@ -4,14 +4,14 @@ from sqlalchemy.orm import Session
 from app.core.security import (
     hash_password,
     verify_password,
-    create_access_token,
     decode_access_token,
 )
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, RefreshTokenRequest
 
 from fastapi.security import OAuth2PasswordRequestForm
+from app.services.auth_service import AuthService
 
 router = APIRouter(
     prefix="/auth",
@@ -69,8 +69,23 @@ def login(
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
-    access_token = create_access_token({"sub": str(user.id)})
-    return {"access_token": access_token, "token_type": "bearer"}
+    tokens = AuthService.create_token_user(db=db, user_id=user.id)
+    return {**tokens, "token_type": "bearer"}
+
+
+@router.post("/refresh")
+def refresh_token(body: RefreshTokenRequest, db: Session = Depends(get_db)) -> dict:
+    new_access_token = AuthService.refresh_access_token(
+        db=db, refresh_token_str=body.refresh_token
+    )
+
+    return {"access_token": new_access_token, "token_type": "bearer"}
+
+
+@router.post("/logout")
+def logout(body: RefreshTokenRequest, db: Session = Depends(get_db)) -> dict:
+    AuthService.revoke_refresh_token(db=db, refresh_token_str=body.refresh_token)
+    return {"detail": "Logged out successfully"}
 
 
 @router.get("/me", response_model=UserResponse)
