@@ -16,6 +16,7 @@ from app.tasks.document_tasks import process_document_tasks
 from app.queue import document_queue
 from app.services.rag_service import search_similar_chunks, stream_rag_answer
 from app.services.cache_service import get_cached_answer
+from app.core.rate_limiter import rate_limit
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 
@@ -106,6 +107,7 @@ def get_document(
 
 
 @router.post("/chat/{organization_id}")
+@rate_limit(limit=10, window_seconds=60)
 async def chat_with_document(
     organization_id: int,
     question: str,
@@ -121,7 +123,7 @@ async def chat_with_document(
         async def cached_stream():
             yield cached
 
-        StreamingResponse(cached_stream(), media_type="text/event-stream")
+        return StreamingResponse(cached_stream(), media_type="text/event-stream")
     query_embedding = generate_embedding(question)
     chunks = search_similar_chunks(db, query_embedding, organization_id)
     if not chunks:
