@@ -127,7 +127,10 @@ async def chat_with_document(
     query_embedding = generate_embedding(question)
     chunks = search_similar_chunks(db, query_embedding, organization_id)
     if not chunks:
-        raise HTTPException(status_code=404, detail="No relevant documents found")
+        raise HTTPException(
+            status_code=404,
+            detail="No relevant documents found. If you just uploaded documents, they may still be processing — try again in a moment.",
+        )
     return StreamingResponse(
         stream_rag_answer(
             question=question, chunks=chunks, organization_id=organization_id

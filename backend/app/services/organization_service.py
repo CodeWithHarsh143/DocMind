@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException
 from app.models.organization import Organization, OrganizationMember, RoleEnum
 from app.models.user import User
 from app.schemas.organization import OrganizationCreate
@@ -16,7 +18,13 @@ class OrganizationService:
     ) -> Organization | None:
         new_org = Organization(name=org_data.name)
         db.add(new_org)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(
+                status_code=400, detail="Organization name already exists"
+            )
         db.refresh(new_org)
 
         membership = OrganizationMember(

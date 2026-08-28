@@ -138,6 +138,9 @@ celerybeat.pid
 *.aof
 *.pid
 
+# Runtime document uploads
+backend/app/storage/uploads/
+
 # RabbitMQ
 mnesia/
 rabbitmq/
