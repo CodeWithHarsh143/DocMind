@@ -10,9 +10,15 @@ import AppLayout, { RequireActiveOrg } from './components/layout/AppLayout'
 const LandingPage = lazy(() => import('./pages/Landing'))
 const LoginPage = lazy(() => import('./pages/Login'))
 const RegisterPage = lazy(() => import('./pages/Register'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'))
 const DashboardPage = lazy(() => import('./pages/Dashboard'))
 const DocumentsPage = lazy(() => import('./pages/Documents'))
 const ChatPage = lazy(() => import('./pages/Chat'))
+const MembersPage = lazy(() => import('./pages/Members'))
+const OrganizationSettingsPage = lazy(() => import('./pages/OrganizationSettings'))
+const ProfilePage = lazy(() => import('./pages/Profile'))
+const NotFoundPage = lazy(() => import('./pages/NotFound'))
+const ServerErrorPage = lazy(() => import('./pages/ServerError'))
 
 function PageLoader() {
   return (
@@ -30,6 +36,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
       <Spinner size={30} />
     </div>
   )
+  if (status === 'error') return <Navigate to="/server-error" replace />
   if (status !== 'authenticated') return <Navigate to="/login" replace />
   return children
 }
@@ -84,6 +91,24 @@ export default function App() {
                     </RedirectIfAuthed>
                   }
                 />
+                <Route
+                  path="/forgot-password"
+                  element={
+                    <RedirectIfAuthed>
+                      <Suspense fallback={null}>
+                        <ForgotPasswordPage />
+                      </Suspense>
+                    </RedirectIfAuthed>
+                  }
+                />
+                <Route
+                  path="/server-error"
+                  element={
+                    <Suspense fallback={null}>
+                      <ServerErrorPage />
+                    </Suspense>
+                  }
+                />
 
                 <Route
                   path="/app"
@@ -94,13 +119,30 @@ export default function App() {
                   }
                 >
                   <Route index element={<Suspense fallback={null}><DashboardPage /></Suspense>} />
+                  <Route
+                    path="profile"
+                    element={
+                      <Suspense fallback={null}>
+                        <ProfilePage />
+                      </Suspense>
+                    }
+                  />
                   <Route element={<RequireActiveOrg />}>
                     <Route path="documents" element={<Suspense fallback={null}><DocumentsPage /></Suspense>} />
                     <Route path="chat" element={<Suspense fallback={null}><ChatPage /></Suspense>} />
+                    <Route path="members" element={<Suspense fallback={null}><MembersPage /></Suspense>} />
+                    <Route
+                      path="organization"
+                      element={
+                        <Suspense fallback={null}>
+                          <OrganizationSettingsPage />
+                        </Suspense>
+                      }
+                    />
                   </Route>
                 </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<Suspense fallback={null}><NotFoundPage /></Suspense>} />
               </Routes>
             </Suspense>
           </BrowserRouter>

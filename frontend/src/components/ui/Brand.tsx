@@ -35,7 +35,17 @@ export function BrandMark({ size = 38 }: { size?: number }) {
   )
 }
 
-export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
+export function Avatar({
+  name,
+  size = 'md',
+  imageUrl = null,
+  alt = '',
+}: {
+  name: string
+  size?: 'sm' | 'md' | 'lg'
+  imageUrl?: string | null
+  alt?: string
+}) {
   const initials = name
     .split(/[@\s._-]+/)
     .filter(Boolean)
@@ -45,6 +55,25 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md'
 
   const dims = { sm: 28, md: 36, lg: 44 }[size]
   const fontSize = { sm: 11, md: 14, lg: 17 }[size]
+
+  if (imageUrl) {
+    return (
+      <span
+        className="grid shrink-0 place-items-center overflow-hidden rounded-full"
+        style={{ width: dims, height: dims }}
+      >
+        <img
+          src={imageUrl}
+          alt={alt}
+          loading="lazy"
+          className="h-full w-full object-cover"
+          onError={(e) => {
+            ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+          }}
+        />
+      </span>
+    )
+  }
 
   return (
     <span

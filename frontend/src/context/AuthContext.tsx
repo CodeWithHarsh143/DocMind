@@ -2,7 +2,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import * as authApi from '../lib/auth'
-import { AUTH_EVENT, clearTokens, getAccessToken } from '../lib/api'
+import { AUTH_EVENT, clearTokens, getAccessToken, ApiError } from '../lib/api'
+import { isNetworkError } from '../lib/errors'
 import type { User } from '../types'
 
 const ACTIVE_ORG_STORAGE_KEY = 'docmind.active_org_id'
@@ -11,12 +12,21 @@ function clearSessionStorage() {
   localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY)
 }
 
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error'
+
+export interface ProfilePatch {
+  name?: string
+  phone?: string | null
+  avatar_url?: string | null
+}
+
 interface AuthContextValue {
   user: User | null
-  status: 'loading' | 'authenticated' | 'unauthenticated'
+  status: AuthStatus
   token: string | null
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  updateProfile: (patch: ProfilePatch) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -24,7 +34,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading')
+  const [status, setStatus] = useState<AuthStatus>('loading')
 
   useEffect(() => {
     let cancelled = false
@@ -40,9 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(me)
           setStatus('authenticated')
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
+          if (isNetworkError(err) || (err instanceof ApiError && err.status >= 500)) {
+            setStatus('error')
+            return
+          }
           clearTokens()
+          clearSessionStorage()
           setUser(null)
           setStatus('unauthenticated')
         }
@@ -75,6 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.register({ email, password })
   }, [])
 
+  const updateProfile = useCallback(async (patch: ProfilePatch) => {
+    // TODO: OTP verification step before calling update API — backend pending
+    // (PATCH /auth/me). Reflects the change locally so the UI stays consistent
+    // until the endpoint ships.
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev))
+  }, [])
+
   const logout = useCallback(async () => {
     await authApi.logout()
     clearTokens()
@@ -90,9 +112,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: getAccessToken(),
       login,
       register,
+      updateProfile,
       logout,
     }),
-    [user, status, login, register, logout],
+    [user, status, login, register, updateProfile, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
