@@ -24,12 +24,12 @@ focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[va
 `
 
 const variants: Record<Variant, string> = {
-  primary: 'text-white bg-[var(--accent-grad)] shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-accent)] hover:-translate-y-px active:translate-y-0',
+  primary: 'text-white bg-accent-grad shadow-[var(--shadow-sm)] hover:shadow-[var(--glow-accent)] hover:-translate-y-px active:translate-y-0',
   secondary:
     'text-[var(--text-1)] bg-[var(--surface-2)] border border-[var(--border)] hover:bg-[var(--surface-3)] hover:border-[var(--border-strong)] active:translate-y-px',
   outline:
-    'text-[var(--text-1)] bg-transparent border border-[var(--border-strong)] hover:border-[var(--accent)] hover:text-white active:translate-y-px',
-  ghost: 'text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[rgba(255,255,255,0.06)]',
+    'text-[var(--text-1)] bg-transparent border border-[var(--border-strong)] hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-hi)] active:translate-y-px',
+  ghost: 'text-[var(--text-2)] hover:text-[var(--text-1)] hover:bg-[var(--hover)]',
   danger: 'text-white bg-gradient-to-b from-[#f37a97] to-[var(--danger)] hover:brightness-110 active:translate-y-px',
 }
 

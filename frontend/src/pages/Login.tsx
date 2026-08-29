@@ -1,38 +1,60 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
+import type { FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Field'
+import { PasswordInput } from '../components/ui/PasswordInput'
+import { FormErrorBanner } from '../components/ui/FormErrorBanner'
 import { AuthLayout } from '../components/auth/AuthLayout'
-import type { FormEvent } from 'react'
+import { GoogleButton } from '../components/auth/GoogleButton'
+import { OrDivider } from '../components/ui/OrDivider'
+import { useField, validateForm, focusFirstInvalid } from '../hooks/useFormValidation'
+import { emailValidator, requiredValidator } from '../utils/validation'
+import { friendlyErrorMessage, isNetworkError } from '../lib/errors'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const { error: throwError } = useToast()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const email = useField<string>(emailValidator, '')
+  const password = useField<string>(requiredValidator('Please enter your password.'), '')
+
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [canRetry, setCanRetry] = useState(false)
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!email || !password) {
-      setFormError('Enter your email and password')
+  const handleSubmit = async (e?: FormEvent) => {
+    e?.preventDefault()
+    if (busy) return
+
+    const { valid } = validateForm([
+      { name: 'email', validate: email.validate },
+      { name: 'password', validate: password.validate },
+    ])
+    if (!valid) {
+      focusFirstInvalid([emailRef, passwordRef])
       return
     }
+
     setBusy(true)
     setFormError(null)
+    setCanRetry(false)
     try {
-      await login(email, password)
+      await login(email.value, password.value)
       navigate('/app', { replace: true })
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Sign in failed')
-      throwError('Sign in failed', err instanceof Error ? err.message : undefined)
+      const message = friendlyErrorMessage(err, 'Sign in failed.')
+      setFormError(message)
+      setCanRetry(isNetworkError(err))
+      throwError('Sign in failed', message)
     } finally {
       setBusy(false)
     }
@@ -45,36 +67,57 @@ export default function LoginPage() {
         Sign in to continue chatting with your documents.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-        <Input
-          type="email"
-          label="Email"
-          placeholder="you@company.com"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          type="password"
-          label="Password"
-          placeholder="••••••••"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      <div className="mt-8">
+        <GoogleButton />
+      </div>
+      <OrDivider className="mt-5" />
 
-        {formError ? (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-[var(--radius-md)] border border-[var(--danger)]/40 bg-[var(--danger-soft)]/40 px-3.5 py-2.5 text-[13px] text-[var(--danger)]"
-          >
-            {formError}
-          </motion.p>
-        ) : null}
+      <form onSubmit={handleSubmit} noValidate className="mt-5 flex flex-col gap-2.5">
+        <div>
+          <Input
+            ref={emailRef}
+            type="email"
+            label="Email"
+            placeholder="you@company.com"
+            autoComplete="email"
+            value={email.value}
+            error={email.error ?? undefined}
+            onChange={(e) => email.onChange(e.target.value)}
+            onBlur={email.onBlur}
+          />
+        </div>
+        <div className="mt-1.5">
+          <PasswordInput
+            ref={passwordRef}
+            label="Password"
+            placeholder="Enter your password"
+            autoComplete="current-password"
+            value={password.value}
+            error={password.error ?? undefined}
+            onChange={(e) => password.onChange(e.target.value)}
+onBlur={password.onBlur}
+            />
+        </div>
 
-        <Button type="submit" loading={busy} size="lg" fullWidth className="mt-1">
-          Sign in
+        <div className="mt-0.5 flex justify-end">
+          <Link to="/forgot-password" className="text-[12.5px] font-medium text-[var(--accent-hi)] hover:underline">
+            Forgot password?
+          </Link>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {formError ? (
+            <div className="mt-2">
+              <FormErrorBanner
+                message={formError}
+                onRetry={canRetry ? () => void handleSubmit() : undefined}
+              />
+            </div>
+          ) : null}
+        </AnimatePresence>
+
+        <Button type="submit" loading={busy} size="lg" fullWidth className="mt-2">
+          {busy ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
 

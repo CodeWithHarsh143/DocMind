@@ -57,7 +57,7 @@ export function Modal({ open, onClose, title, description, children, className }
             <button
               onClick={onClose}
               aria-label="Close"
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-[var(--radius-md)] text-[var(--text-3)] transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--text-1)]"
+              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-[var(--radius-md)] text-[var(--text-3)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-1)]"
             >
               <X size={16} />
             </button>

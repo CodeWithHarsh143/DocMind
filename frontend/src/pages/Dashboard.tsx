@@ -96,7 +96,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center gap-6 rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface-1)]/50 px-6 py-16 text-center"
           >
-            <div className="grid h-16 w-16 place-items-center rounded-[var(--radius-xl)] bg-[var(--accent-grad)] text-[var(--bg-0)] shadow-[var(--glow-accent)]">
+            <div className="grid h-16 w-16 place-items-center rounded-[var(--radius-xl)] bg-accent-grad text-[var(--on-accent)] shadow-[var(--glow-accent)]">
               <Sparkles size={26} />
             </div>
             <div>
@@ -240,17 +240,17 @@ export default function DashboardPage() {
           >
             <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-1)]/70 p-5">
               <h2 className="font-display mb-4 text-[15px] font-semibold">Next steps</h2>
-              <ol className="flex flex-col gap-4">
+              <ol className="flex flex-col gap-5">
                 {[
                   { n: 1, t: 'Upload documents', d: 'Add PDFs, DOCX or TXT files that you want to query.' },
                   { n: 2, t: 'Wait for processing', d: 'DocMind extracts and embeds their content automatically.' },
                   { n: 3, t: 'Ask questions', d: 'Get streamed, context-aware answers grounded in your files.' },
                 ].map((step) => (
                   <li key={step.n} className="flex gap-3">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--accent-grad)] text-[12px] font-bold text-[var(--bg-0)]">
+                    <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-grad text-[12px] font-bold text-[var(--on-accent)]">
                       {step.n}
                     </span>
-                    <div>
+                    <div className="flex flex-col gap-1">
                       <div className="text-[13.5px] font-medium text-[var(--text-1)]">{step.t}</div>
                       <p className="text-[12.5px] leading-relaxed text-[var(--text-3)]">{step.d}</p>
                     </div>

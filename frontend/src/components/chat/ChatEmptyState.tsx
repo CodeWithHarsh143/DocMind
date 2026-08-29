@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
-import { FileSearch, Lightbulb, ListTree, Sparkles } from 'lucide-react'
+import { FileSearch, Lightbulb, ListTree } from 'lucide-react'
+import { BrandMark } from '../ui/Brand'
 
 interface ChatEmptyStateProps {
   orgName: string | null
@@ -31,9 +32,9 @@ export function ChatEmptyState({ orgName, onSuggestion }: ChatEmptyStateProps) {
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-        className="relative mb-5 grid h-16 w-16 place-items-center rounded-[var(--radius-xl)] bg-[var(--accent-grad)] text-[var(--bg-0)] shadow-[var(--glow-accent)]"
+        className="relative mb-5 rounded-[var(--radius-xl)] shadow-[var(--glow-accent)]"
       >
-        <Sparkles size={26} />
+        <BrandMark size={64} className="rounded-[var(--radius-xl)]" />
       </motion.div>
 
       <motion.h1

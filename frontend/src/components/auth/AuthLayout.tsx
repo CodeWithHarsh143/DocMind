@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { MessageSquareText, ShieldCheck, Zap } from 'lucide-react'
 import { Logo } from '../ui/Brand'
+import { ThemeToggle } from '../ui/ThemeToggle'
 
 const FEATURES = [
   { icon: Zap, title: 'Instant answers', text: 'Streamed responses grounded in your documents.' },
@@ -26,7 +28,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
         />
 
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          <Logo />
+          <Link to="/" aria-label="DocMind — go home">
+            <Logo />
+          </Link>
         </motion.div>
 
         <div className="relative">
@@ -81,6 +85,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 
       {/* Form panel */}
       <div className="relative flex items-center justify-center px-5 py-10 sm:px-8">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle />
+        </div>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -88,7 +95,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           className="w-full max-w-sm"
         >
           <div className="mb-8 lg:hidden">
-            <Logo />
+            <Link to="/" aria-label="DocMind — go home">
+              <Logo />
+            </Link>
           </div>
           {children}
         </motion.div>

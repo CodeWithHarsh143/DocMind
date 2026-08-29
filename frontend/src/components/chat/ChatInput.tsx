@@ -70,7 +70,7 @@ export function ChatInput({ onSend, streaming, onStop, disabled }: ChatInputProp
               onClick={submit}
               disabled={disabled || !value.trim()}
               aria-label="Send message"
-              className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-[var(--accent-grad)] text-white shadow-[var(--shadow-sm)] transition-all enabled:hover:shadow-[var(--glow-accent)] enabled:hover:translate-y-px disabled:opacity-40"
+              className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-accent-grad text-white shadow-[var(--shadow-sm)] transition-all enabled:hover:shadow-[var(--glow-accent)] enabled:hover:translate-y-px disabled:opacity-40"
             >
               <ArrowUp size={17} strokeWidth={2.5} />
             </button>

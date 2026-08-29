@@ -1,33 +1,22 @@
 import { useId } from 'react'
 import { forwardRef } from 'react'
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react'
-import { AlertCircle } from 'lucide-react'
-
-const baseFieldStyles = `
-w-full text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)]
-bg-[var(--surface-2)]/80 border rounded-[var(--radius-md)]
-transition-all duration-200
-focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40
-disabled:opacity-55 disabled:pointer-events-none
-`
-
-function borderClass(hasError: boolean | undefined) {
-  return hasError
-    ? 'border-[var(--danger)]/60 focus:border-[var(--danger)]'
-    : 'border-[var(--border)] hover:border-[var(--border-strong)] focus:border-[var(--accent)]'
-}
+import { FieldMessage } from './FieldMessage'
+import { baseFieldStyles, borderClass } from './fieldStyles'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
   error?: string
   hint?: string
+  errorId?: string
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, className: extra, ...rest },
+  { label, error, hint, errorId, className: extra, ...rest },
   ref,
 ) {
   const id = useId()
+  const describedBy = error || hint ? (errorId ?? `${id}-message`) : undefined
   return (
     <div className="flex flex-col gap-1.5">
       {label ? (
@@ -40,14 +29,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         ref={ref}
         className={`${baseFieldStyles} h-11 px-3.5 ${borderClass(Boolean(error))} ${extra ?? ''}`}
         aria-invalid={Boolean(error)}
+        aria-describedby={describedBy}
         {...rest}
       />
-      {(error || hint) && (
-        <div className={`flex items-center gap-1.5 text-xs ${error ? 'text-[var(--danger)]' : 'text-[var(--text-3)]'}`}>
-          {error ? <AlertCircle size={13} /> : null}
-          <span>{error ?? hint}</span>
-        </div>
-      )}
+      {error || hint ? (
+        <FieldMessage id={describedBy} error={error} hint={hint} />
+      ) : null}
     </div>
   )
 })
@@ -56,13 +43,15 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
   label?: string
   error?: string
   hint?: string
+  errorId?: string
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { label, error, hint, className: extra, ...rest },
+  { label, error, hint, errorId, className: extra, ...rest },
   ref,
 ) {
   const id = useId()
+  const describedBy = error || hint ? (errorId ?? `${id}-message`) : undefined
   return (
     <div className="flex flex-col gap-1.5">
       {label ? (
@@ -75,14 +64,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
         ref={ref}
         className={`${baseFieldStyles} min-h-24 px-3.5 py-3 resize-none ${borderClass(Boolean(error))} ${extra ?? ''}`}
         aria-invalid={Boolean(error)}
+        aria-describedby={describedBy}
         {...rest}
       />
-      {(error || hint) && (
-        <div className={`flex items-center gap-1.5 text-xs ${error ? 'text-[var(--danger)]' : 'text-[var(--text-3)]'}`}>
-          {error ? <AlertCircle size={13} /> : null}
-          <span>{error ?? hint}</span>
-        </div>
-      )}
+      {error || hint ? (
+        <FieldMessage id={describedBy} error={error} hint={hint} />
+      ) : null}
     </div>
   )
 })

@@ -61,7 +61,7 @@ export function OrgDropdown({ onSelect }: OrgDropdownProps) {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--accent-grad)]/15 text-[var(--accent-hi)]">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-accent-grad/15 text-[var(--accent-hi)]">
           <Building2 size={16} />
         </span>
         <span className="min-w-0 flex-1">
@@ -108,7 +108,7 @@ export function OrgDropdown({ onSelect }: OrgDropdownProps) {
                     className={`flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-3 py-2 text-left text-[13.5px] transition-colors ${
                       activeOrg?.id === org.id
                         ? 'bg-[var(--accent-soft)] text-white'
-                        : 'text-[var(--text-2)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--text-1)]'
+                        : 'text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-[var(--text-1)]'
                     }`}
                   >
                     <Building2 size={14} className="shrink-0 text-[var(--text-3)]" />
@@ -123,7 +123,7 @@ export function OrgDropdown({ onSelect }: OrgDropdownProps) {
                 setOpen(false)
                 setModalOpen(true)
               }}
-              className="flex w-full items-center gap-2.5 border-t border-[var(--border-subtle)] px-4 py-3 text-[13.5px] font-medium text-[var(--accent-hi)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+              className="flex w-full items-center gap-2.5 border-t border-[var(--border-subtle)] px-4 py-3 text-[13.5px] font-medium text-[var(--accent-hi)] transition-colors hover:bg-[var(--hover)]"
             >
               <Plus size={14} /> New workspace
             </button>

@@ -2,21 +2,41 @@ export interface User {
   id: number
   email: string
   created_at: string
+  /**
+   * Profile fields the backend will expose once the profile endpoints land
+   * (backend tasks 6 & 10). Currently absent from /auth/me, so the UI treats
+   * them as optional and seeds them client-side only.
+   */
+  name?: string | null
+  phone?: string | null
+  avatar_url?: string | null
 }
 
 export type OrganizationRole = 'admin' | 'user'
 
+/**
+ * Wire shape of a membership row. `email`/`name`/`joined_at`/`status` are
+ * populated by the members endpoint that is pending on the backend
+ * (backend tasks 1-3); today only id/user_id/organization_id/role arrive.
+ */
 export interface OrganizationMember {
   id: number
   user_id: number
   organization_id: number
   role: OrganizationRole
+  email?: string
+  name?: string | null
+  joined_at?: string
+  status?: 'active' | 'pending'
 }
 
 export interface Organization {
   id: number
   name: string
   created_at: string
+  /** Optional fields for the settings page (backend task 4 & 5). */
+  description?: string | null
+  logo_url?: string | null
 }
 
 export interface OrganizationWithMembers extends Organization {

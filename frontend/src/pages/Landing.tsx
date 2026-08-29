@@ -4,6 +4,7 @@ import { ArrowRight, BookOpenText, FileSearch, MessageSquareText, ShieldCheck, S
 import { useAuth } from '../context/AuthContext'
 import { Logo } from '../components/ui/Brand'
 import { Button } from '../components/ui/Button'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 
 const FEATURES = [
   {
@@ -48,16 +49,19 @@ function Navbar() {
   const { status } = useAuth()
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
-      <Logo />
+      <Link to="/" aria-label="DocMind — go home">
+        <Logo />
+      </Link>
       <nav className="hidden items-center gap-8 text-[14px] text-[var(--text-2)] md:flex" aria-label="Landing">
         <a href="#features" className="transition-colors hover:text-[var(--text-1)]">Features</a>
         <a href="#how" className="transition-colors hover:text-[var(--text-1)]">How it works</a>
         <a href="#faq" className="transition-colors hover:text-[var(--text-1)]">FAQ</a>
       </nav>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
+        <ThemeToggle />
         {status === 'authenticated' ? (
           <Link to="/app">
-            <Button size="md">Open app <ArrowRight size={15} /></Button>
+            <Button variant="ghost" size="md">Open app <ArrowRight size={15} /></Button>
           </Link>
         ) : (
           <>
@@ -65,7 +69,7 @@ function Navbar() {
               <Button variant="ghost" size="md">Sign in</Button>
             </Link>
             <Link to="/register">
-              <Button size="md">Get started <ArrowRight size={15} /></Button>
+              <Button variant="outline" size="md">Get started <ArrowRight size={15} /></Button>
             </Link>
           </>
         )}
@@ -106,15 +110,17 @@ export default function LandingPage() {
           <span className="gradient-text">intelligent answers.</span>
         </motion.h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, delay: 0.16 }}
-          className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-[var(--text-3)] sm:text-[17px]"
-        >
-          Upload PDFs, DOCX and TXT files, then ask anything. DocMind streams precise,
-          context-grounded answers at lightning speed — no more digging through pages.
-        </motion.p>
+        <div className="mx-auto mt-5 max-w-xl">
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.16 }}
+            className="text-center text-[16px] leading-relaxed text-[var(--text-3)] sm:text-[17px]"
+          >
+            Upload PDFs, DOCX and TXT files, then ask anything. DocMind streams precise,
+            context-grounded answers at lightning speed — no more digging through pages.
+          </motion.p>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -129,7 +135,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Button size="lg" onClick={() => navigate('/register')}>
-                Start free <ArrowRight size={17} />
+                Get started free <ArrowRight size={17} />
               </Button>
               <Button size="lg" variant="outline" onClick={() => navigate('/login')}>
                 Sign in
@@ -145,7 +151,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6, delay: 0.32, type: 'spring', stiffness: 120, damping: 20 }}
           className="relative mx-auto mt-16 max-w-3xl"
         >
-          <div className="absolute -inset-6 rounded-[32px] bg-[var(--accent-grad)] opacity-20 blur-3xl" aria-hidden />
+          <div className="absolute -inset-6 rounded-[32px] bg-accent-grad opacity-20 blur-3xl" aria-hidden />
           <div className="island relative overflow-hidden rounded-[var(--radius-xl)] p-2">
             <div className="flex items-center gap-1.5 border-b border-[var(--border-subtle)] px-4 py-3">
               <span className="h-2.5 w-2.5 rounded-full bg-[var(--danger)]/70" />
@@ -155,12 +161,12 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col gap-4 p-5 text-left">
               <div className="flex justify-end">
-                <div className="max-w-[80%] rounded-[var(--radius-lg)] rounded-tr-md bg-[var(--accent-grad)] px-4 py-2.5 text-[13.5px] text-white">
+                <div className="max-w-[80%] rounded-[var(--radius-lg)] rounded-tr-md bg-accent-grad px-4 py-2.5 text-[13.5px] text-white">
                   Summarize the onboarding runbook for me
                 </div>
               </div>
               <div className="flex gap-3">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--accent-grad)] text-[var(--bg-0)]">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-md)] bg-accent-grad text-[var(--on-accent)]">
                   <Sparkles size={13} />
                 </span>
                 <div className="rounded-[var(--radius-lg)] rounded-tl-md border border-[var(--border)] bg-[var(--surface-1)] px-4 py-3 text-[13.5px] leading-relaxed text-[var(--text-2)]">
@@ -244,18 +250,19 @@ export default function LandingPage() {
       <section className="mx-auto w-full max-w-6xl px-5 pb-24 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
           className="relative overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-strong)] bg-gradient-to-br from-[var(--accent-soft)] via-[var(--bg-1)] to-[var(--bg-1)] p-10 text-center sm:p-16"
         >
           <div className="pointer-events-none absolute -top-24 left-1/2 h-56 w-[36rem] -translate-x-1/2 rounded-full bg-[var(--accent)]/20 blur-[110px]" aria-hidden />
           <h2 className="relative font-display text-[28px] font-semibold tracking-tight sm:text-[38px]">
             Ready to make your documents talk?
           </h2>
-          <p className="relative mx-auto mt-3 max-w-md text-[15px] text-[var(--text-3)]">
-            Free to start. Upload a file, ask a question, and watch the answer stream in.
-          </p>
+          <div className="relative mx-auto mt-3 max-w-md">
+            <p className="text-center text-[15px] text-[var(--text-3)]">
+              Free to start. Upload a file, ask a question, and watch the answer stream in.
+            </p>
+          </div>
           <div className="relative mt-8 flex justify-center">
             <Button size="lg" onClick={() => navigate(status === 'authenticated' ? '/app' : '/register')}>
               {status === 'authenticated' ? 'Go to your app' : 'Create your account'} <ArrowRight size={17} />
@@ -266,7 +273,9 @@ export default function LandingPage() {
 
       <footer className="border-t border-[var(--border-subtle)] py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-5 sm:flex-row sm:px-8">
-          <Logo />
+          <Link to="/" aria-label="DocMind — go home">
+            <Logo />
+          </Link>
           <p className="text-[12.5px] text-[var(--text-3)]">
             Built with FastAPI, pgvector & Google Gemini. © {new Date().getFullYear()} DocMind.
           </p>

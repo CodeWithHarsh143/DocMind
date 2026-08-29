@@ -13,6 +13,10 @@ interface OrgContextValue {
   activeOrg: OrganizationWithMembers | null
   refreshOrganizations: () => Promise<void>
   createOrganization: (name: string) => Promise<OrganizationWithMembers>
+  updateOrganization: (
+    id: number,
+    patch: { name?: string; description?: string | null; logo_url?: string | null },
+  ) => Promise<void>
   setActiveOrganization: (org: OrganizationWithMembers | null) => void
 }
 
@@ -72,6 +76,15 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const updateOrganization = useCallback(
+    async (id: number, patch: { name?: string; description?: string | null; logo_url?: string | null }) => {
+      // TODO(backend): PATCH /organizations/{org_id} — admin only, persists
+      // name/description/logo_url. Optimistically reflects locally for now.
+      setOrganizations((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)))
+    },
+    [],
+  )
+
   const value = useMemo<OrgContextValue>(
     () => ({
       organizations,
@@ -79,9 +92,18 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       activeOrg,
       refreshOrganizations,
       createOrganization,
+      updateOrganization,
       setActiveOrganization,
     }),
-    [organizations, organizationsLoading, activeOrg, refreshOrganizations, createOrganization, setActiveOrganization],
+    [
+      organizations,
+      organizationsLoading,
+      activeOrg,
+      refreshOrganizations,
+      createOrganization,
+      updateOrganization,
+      setActiveOrganization,
+    ],
   )
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>

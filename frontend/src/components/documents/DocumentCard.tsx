@@ -85,7 +85,7 @@ export function DocumentCard({ document }: { document: DocumentRecord }) {
           </span>
           <button
             onClick={() => void openPreview()}
-            className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--text-1)]"
+            className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 py-1.5 text-[12.5px] font-medium text-[var(--text-2)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-1)]"
           >
             <Eye size={13} /> Preview
           </button>

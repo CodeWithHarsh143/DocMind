@@ -1,0 +1,701 @@
+================================================================================
+DocMind — BACKEND TASKS + FRONTEND INTEGRATION GUIDE
+================================================================================
+
+Written for the backend developer. All the frontend screens are DONE and already
+committed. What is missing is the backend (FastAPI/SQLAlchemy) behind them.
+Every task below says: WHAT to build, the endpoint contract, validation/errors,
+and EXACTLY how the frontend will swap from demo data to the real API.
+
+How to read the "Frontend integration" part of each task:
+  - The frontend already has a function with a `// TODO(backend): ...` marker.
+  - Your job: build the endpoint, then replace that function body with an
+    apiFetch() call (see examples). The UI will work without any page changes.
+
+========================================================================
+0. CURRENT STATE (kya already hai)
+========================================================================
+Frontend (DONE, committed):
+  - /app/members      -> Members page (invite, make/remove admin, remove)
+  - /app/organization -> Org settings (edit name/desc, upload logo)
+  - /app/profile      -> Profile (name/phone edit, avatar upload)
+  - /forgot-password  -> 4-step OTP flow (identify -> OTP -> new password -> done)
+  - Login/Register    -> "Continue with Google" button (UI only) + OR divider
+
+Backend (today):
+  - Has: register, login, refresh, logout, /me, orgs create + list + add_member
+  - Has: document upload/chat (a good reference for multipart + membership checks)
+  - Missing: everything for members roster, org settings, profile, reset pwd, OAuth
+
+Frontend demo layer being replaced:
+  - frontend/src/lib/orgMembers.ts         (in-memory demo store)
+  - frontend/src/hooks/useOrgMembers.ts    (hook wrapping that store)
+  - frontend/src/context/OrgContext.tsx    (updateOrganization is optimistic stub)
+  - frontend/src/context/AuthContext.tsx   (updateProfile is optimistic stub)
+  - frontend/src/pages/ForgotPassword.tsx  (OTP steps are fake timers)
+  - frontend/src/pages/Profile.tsx         (avatar upload is fake)
+  - frontend/src/pages/OrganizationSettings.tsx (logo upload is fake)
+
+IMPORTANT: the frontend types already match the wire shapes you must return:
+  - frontend/src/types/index.ts  ->  User, Organization, OrganizationMember
+
+========================================================================
+1. CONVENTIONS TO FOLLOW (matlab: isi pattern me banao)
+========================================================================
+a) Auth check: `current_user: User = Depends(get_current_user)` (routers/auth.py)
+b) Membership/admin check — reuse service (services/organization_service.py):
+     OrganizationService.required_membership(db, org_id, user.id)  # any member
+     OrganizationService.require_admin(db, org_id, user.id)        # admin only
+c) Custom HTTP errors — raise DocMindExceptions subclasses (core/exceptions.py)
+   OR fastapi HTTPException. All DocMindExceptions are auto-serialized to
+   {"detail": message} via the global handler in app/main.py.
+d) Return the exact `detail` strings the UI already expects/tests:
+     - "That email is already a member of this organization."   (409)
+     - "Member not found."                                     (404)
+     - "You are not an admin of this organization"             (403)
+     - "You are not a member of this organization"             (403)
+   Frontend error mapping lives in frontend/src/lib/errors.ts
+   (USER_FRIENDLY_DETAILS list) — add any new friendly messages there.
+e) Multipart uploads — copy the pattern from routers/document.py
+   (aiofiles + UploadFile + uuid name). Images go to backend/app/storage/uploads/.
+f) Rate limit — reuse `@rate_limit(...)` from app/core/rate_limiter.py for any
+   public/email endpoint.
+g) Frontend API layer: frontend/src/lib/api.ts `apiFetch(path, options)` auto-adds
+   the Bearer token and handles 401 refresh. Use it, do NOT build new fetch calls.
+
+========================================================================
+2. DATABASE / MODEL CHANGES (first, do this)
+========================================================================
+Add columns (dev DB uses Base.metadata.create_all — it will NOT alter existing
+tables, so also run an ALTER TABLE or just recreate the dev DB):
+
+  users:
+    name          String  nullable      (profile full name)
+    phone         String  nullable      (optional, 7-15 digits)
+    avatar_url    String  nullable      (path/URL to uploaded avatar)
+
+  organizations:
+    description   Text/Str nullable     (<= 200 chars)
+    logo_url      String  nullable      (path/URL to uploaded logo)
+
+  organization_members:
+    joined_at     DateTime default now  (for the roster "Joined" column)
+    status        String enum 'active'|'pending'  (invite flow)
+
+  OPTIONAL but recommended for invites-by-email:
+    users.hashed_password  -> make nullable (pending invited users have no pwd)
+
+Also add a table (or Redis, they already have redis_url) for reset codes:
+  password_reset_codes: identifier(str, index), code_hash(str),
+                        expires_at(DateTime), used(bool)
+
+Update: backend/app/schemas/user.py (UserResponse += name/phone/avatar_url),
+        backend/app/schemas/organization.py (OrganizationResponse +=
+        description/logo_url), models in backend/app/models/.
+
+================================================================================
+TASK 1 — GET  /organizations/{org_id}/members     (list roster)
+================================================================================
+WHAT: Return every member of an org with profile info joined from users.
+  Ek line me: members ki full list backend se lao (abhi frontend demo data
+  dikhata hai).
+
+Response (JSON array) — must match frontend/src/lib/orgMembers.ts OrgMember:
+  [
+    {
+      "id": 5,                 // membership row id (used as React key)
+      "user_id": 3,            // real user id
+      "role": "admin",         // "admin" | "user"
+      "email": "a@b.com",
+      "name": "Priya Sharma" | null,
+      "joined_at": "2026-07-26T...",   // from membership.joined_at
+      "status": "active" | "pending"
+    }
+  ]
+
+Auth: any member of the org (required_membership).
+SQL:  query OrganizationMember where organization_id == org_id, join User,
+      return row.
+Order: admins first, then joined_at asc (so the page looks stable).
+
+FRONTEND INTEGRATION (swap this in frontend/src/lib/orgMembers.ts):
+  - Remove the demo `store`, `seed`, `ensureSeeded` and the latency wait.
+  - Replace listOrgMembers():
+
+    export async function listOrgMembers(orgId: number): Promise<OrgMember[]> {
+      return apiFetch<OrgMember[]>(`/organizations/${orgId}/members`)
+    }
+
+  - The hook (useOrgMembers.ts) already calls listOrgMembers(orgId, self) and
+    setMembers(list) — no changes needed there beyond dropping the `self` arg
+    if you want.
+
+VERIFY: Members page shows real roster, "you" badge still works (it compares
+member.user_id to user.id), admin actions visible (self role from AuthContext).
+
+================================================================================
+TASK 2 — POST /organizations/{org_id}/members      (invite by email)
+================================================================================
+WHAT: Invite a NEW member by email (existing add_member needs a user_id; this
+invite must work for ANY email).
+  Ek line me: email se member add karo; agar email ka user exist nahi karta to
+  pending account banao/rahne do.
+
+Request body:
+  { "email": "ada@example.com", "role": "user" }     // role: "admin" | "user"
+
+Behavior:
+  - Admin only (require_admin).
+  - Normalize email (trim + lowercase).
+  - If EMAIL == current user's email        -> 400 "You are already a member."
+  - If membership for that user exists:
+        active  -> 409 "That email is already a member of this organization."
+        pending -> 409 same message (or resend the invite — your choice)
+  - If a User with that email exists -> create active membership right away.
+  - If NOT -> create a placeholder User (hashed_password = None, name = None),
+    membership with status "pending". When that person later registers, update
+    register (TASK 9 note) to just SET the password instead of failing with
+    "Email already registered".
+
+Response: single member object (same shape as TASK 1) with status "pending".
+
+Email invite (optional but expected): send an invitation email + join link.
+No SMTP yet -> log the link to the server console in dev (document it in .env).
+
+FRONTEND INTEGRATION (frontend/src/lib/orgMembers.ts):
+
+    export async function inviteToOrg(
+      orgId: number, input: InviteInput,
+    ): Promise<OrgMember> {
+      return apiFetch<OrgMember>(`/organizations/${orgId}/members`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      })
+    }
+
+NOTE for the hook: useOrgMembers.addMember appends the returned member to the
+list — keep returning the created member object.
+
+VERIFY: type an unknown email -> row appears with "Invitation pending";
+type priya@example.com -> the exact 409 message shows under the field.
+
+================================================================================
+TASK 3 — PATCH + DELETE /organizations/{org_id}/members/{user_id}
+================================================================================
+WHAT: change a member's role, or remove a member.
+  Ek line me: kisi ko admin banao/girro, ya member remove karo.
+
+PATCH, body: { "role": "admin" }              // "admin" | "user"
+  - Admin only (require_admin).
+  - Cannot change your OWN role.
+  - 404 if the membership doesn't exist: "Member not found."
+  - Response: updated member object (TASK 1 shape).
+  - Guard (recommended): don't let the LAST admin be demoted/removed.
+
+DELETE:
+  - Admin only.
+  - Cannot remove yourself (the admin doing the delete).
+  - 404 if membership missing: "Member not found."
+  - Remove the membership row. Decide: also delete or orphan the user's
+    documents in that org (recommend: keep documents, ownership goes to org).
+  - Response: role route -> 200 {"detail": "Member removed"}  (or 204).
+    IMPORTANT: the frontend apiFetch handles 204 as undefined; either is fine
+    but if you return 200 return an empty object / {}.
+
+FRONTEND INTEGRATION (frontend/src/lib/orgMembers.ts):
+
+    export async function setOrgMemberRole(
+      orgId: number, userId: number, role: OrganizationRole,
+    ): Promise<OrgMember> {
+      return apiFetch<OrgMember>(`/organizations/${orgId}/members/${userId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role }),
+      })
+    }
+
+    export async function removeOrgMember(orgId: number, userId: number): Promise<void> {
+      await apiFetch(`/organizations/${orgId}/members/${userId}`, { method: 'DELETE' })
+    }
+
+NOTE: hook functions currently pass member.id; change the calls in
+useOrgMembers.ts to pass member.user_id for these two (one-line change).
+
+VERIFY: promote Marcus -> "Admin added" toast and badge flips;
+remove Lena -> dialog -> row disappears + "Member removed" toast.
+
+================================================================================
+TASK 4 — PATCH /organizations/{org_id}            (edit org details)
+================================================================================
+WHAT: update org name / description (admin only).
+  Ek line me: organization ka naam / description update karne ka endpoint.
+
+Body (partial allowed):
+  { "name": "Workspace Alpha 2", "description": "Our docs" }
+
+Validation (mirror frontend rules so tests stay consistent):
+  name:        2-60 chars, restricted charset   -> 422 if invalid
+  description: <= 200 chars, no control chars   -> 422 if invalid
+  - Admin only.
+  - Duplicate org name -> 400 "Organization name already exists" (IntegrityError)
+  - Response: full updated org object:
+
+    { "id": 10, "name": "...", "description": "...", "logo_url": "<url|null>",
+      "created_at": "2026-..." }
+
+FRONTEND INTEGRATION (frontend/src/context/OrgContext.tsx, line ~80):
+  Replace the optimistic stub (currently just mutates local state) with:
+
+    const updateOrganization = useCallback(
+      async (id: number, patch: { name?: string; description?: string|null;
+                                   logo_url?: string|null }) => {
+        const updated = await apiFetch<Organization>(
+          `/organizations/${id}`, { method: 'PATCH', body: JSON.stringify(patch) },
+        )
+        setOrganizations((prev) => prev.map((o) => (o.id === id ? updated : o)))
+      },
+      [],
+    )
+
+Also update GET /organizations/mine (routers/organization.py) so each org in
+the sidebar/settings already carries description + logo_url — just add the two
+fields to OrganizationResponse.
+
+VERIFY: org settings -> change name -> toast + sidebar updates instantly.
+
+================================================================================
+TASK 5 — POST /organizations/{org_id}/logo        (org logo upload)
+================================================================================
+WHAT: upload (or replace) the org logo image.
+  Ek line me: logo file upload karo, backend save kare, URL return kare.
+
+Rules (must match frontend/src/components/ui/AvatarUpload.tsx):
+  - Content types allowed: image/jpeg, image/png, image/webp
+  - Max size: 5 MB
+  - Reject with 400 + detail "PNG, JPG or WebP up to 5MB."
+  - Admin only.
+
+Flow: accept file -> validate type/size -> save as uuid.{ext} under
+backend/app/storage/uploads/ -> update Organization.logo_url ->
+return { "logo_url": "/uploads/<uuid>.png" }.
+
+SERVER THE FILES: add in app/main.py:
+  from fastapi.staticfiles import StaticFiles
+  app.mount("/uploads", StaticFiles(directory=<uploads dir>), name="uploads")
+(Frontend stores the returned path directly; <img src="/uploads/.."> needs the
+backend origin -> either return a full URL or set the frontend to prefix with
+API_URL in AuthenticationContext/Brand display.)
+
+FRONTEND INTEGRATION (frontend/src/pages/OrganizationSettings.tsx, line ~89):
+
+    const fd = new FormData()
+    fd.append('file', file)
+    const { logo_url } = await apiFetch<{ logo_url: string }>(
+      `/organizations/${org.id}/logo`, { method: 'POST', body: fd },
+    )
+    await updateOrganization(org.id, { logo_url })
+
+NOTE: apiFetch only sets a JSON content-type for string bodies, so FormData is
+sent with the correct multipart boundary automatically.
+
+VERIFY: pick PNG -> "Save logo" enabled -> toast + sidebar logo changes.
+
+================================================================================
+TASK 6 — PATCH /users/me/profile                   (update name/phone)
+================================================================================
+WHAT: update the signed-in user's name / phone.
+  Ek line me: profile ka naam aur phone update karo.
+
+Body: { "name": "Ada Lovelace", "phone": "+1 555 010 2030" }   // phone optional
+Validation (mirror frontend):
+  name:  letters + spaces only, non-empty     -> 422 otherwise
+  phone: optional; if present 7-15 digits     -> 422 otherwise
+Auth: any logged-in user.
+Response: updated user object:
+  { "id": 1, "email": "...", "created_at": "...",
+    "name": "Ada Lovelace", "phone": "...", "avatar_url": null }
+
+FRONTEND INTEGRATION (frontend/src/context/AuthContext.tsx, updateProfile ~line 93):
+
+    const updateProfile = useCallback(async (patch: ProfilePatch) => {
+      // Currently a stub + TODO. After your endpoint lands:
+      const updated = await apiFetch<User>('/users/me/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      })
+      setUser((prev) => (prev ? { ...prev, ...updated } : prev))
+    }, [])
+
+Also: GET /auth/me (frontend getMe) must start returning name/phone/avatar_url
+so the app reads a real profile after login (add the fields to UserResponse).
+
+VERIFY: profile -> save -> toast + sidebar shows the new name right away.
+
+================================================================================
+TASK 7 — OTP flow: request / verify / reset password  (3 endpoints)
+================================================================================
+Overview:
+  Forgot-password UI already does 4 steps and only calls fake timers. You build:
+    a) POST /auth/request-otp      identify step
+    b) POST /auth/verify-otp       OTP step
+    c) POST /auth/reset-password   new-password step
+  Ek line me: forgot password wala OTP flow (code bhejo -> verify -> password
+  reset karo). Dev me code sirf server log me dikhega, email/console.
+
+--------------------------------------------------------------------
+a) POST /auth/request-otp
+--------------------------------------------------------------------
+Body: { "identifier": "ada@example.com" }   // email OR phone
+
+Flow:
+  - identifier can be an email or a phone number (frontend already validates).
+  - Rate-limit -> @rate_limit(limit=5, window_seconds=300).
+  - Generate a 6-digit numeric code. Store HASHED (sha256) in Redis or the
+    reset-codes table with:
+        key/identifier, code_hash, expires_at = now + 10 minutes, attempts = 0
+  - Do NOT reveal whether the account exists (no account -> still "sent").
+  - "Send" = log `[OTP] ada@example.com -> 123456` to the server console in dev
+    (add SMTP env placeholders for production).
+  - Response: 200 { "expires_in": 600 }   // so the UI can count down
+  - 429 -> "Too many requests. Please wait a moment." (standard limiter)
+
+--------------------------------------------------------------------
+b) POST /auth/verify-otp
+--------------------------------------------------------------------
+Body: { "identifier": "ada@example.com", "code": "123456" }
+
+Flow:
+  - Look up the stored code. If missing/expired/used -> 400
+    "That code did not verify. Please try again."   (frontend shows exactly this)
+  - Wrong code -> increment attempts; after 5 -> 429
+    "Too many attempts. Request a new code." (UI auto-returns to identify)
+  - Correct -> mark used + issue a SHORT-LIVED reset JWT:
+      jwt payload: { "sub": <user_id or "pending">, "scope": "password_reset",
+                     "identifier": email, exp: now + 10 min }
+    Frontend does not see this token yet — see TASK 8 (return it in step c).
+  - Response: 200 { "verified": true }
+
+--------------------------------------------------------------------
+c) POST /auth/reset-password
+--------------------------------------------------------------------
+Body options:
+  Option A (recommended, keeps one round-trip):
+    { "identifier": "...", "code": "123456", "new_password": "Str0ng!Pass99" }
+    Re-verify code server-side, then set the new password. Simplest, stateless.
+  Option B (two-token): { "reset_token": "<jwt>", "new_password": "..." }
+    Frontend keeps the JWT from verify-otp in memory and sends it here.
+
+Validation (mirror the register rules):
+  new_password: min 8, at least upper + lower + digit + special -> 422
+Auth: none (the code/JWT is the credential).
+On success:
+  - If the account was a pending invite user (hashed_password NULL) ->
+    this is how they "register" after invite: SET the password and mark active.
+  - Rotate security: invalidate all refresh tokens for this user if you keep
+    them in DB (models/refresh_token.py) — optional but recommended.
+  - Response: 200 { "detail": "Password updated" }
+
+FRONTEND INTEGRATION: frontend/src/pages/ForgotPassword.tsx — three markers:
+  line ~69 : submitIdentifier()  -> await apiFetch('/auth/request-otp', {method:'POST', body: JSON.stringify({ identifier })})  (auth:false not needed)
+  line ~286: submitCode()        -> await apiFetch('/auth/verify-otp', {method:'POST', body: JSON.stringify({ identifier, code })})
+  line ~414: submitReset()       -> await apiFetch('/auth/reset-password', {method:'POST', body: JSON.stringify({ identifier, code, new_password })})
+
+  (identifiers: the current step copies `identifier` prop into each step; wire
+   them through — the FakeStep components already receive the props they need.)
+  AFTER wiring the API, ALSO update the OTP "resend" cooldown (30s) if the
+  server 429s early, and clear the "Demo build ... placeholder" info toast.
+
+VERIFY: full journey -> identify shows "one-time code" -> type 123456 (from
+server log) -> "Set a new password" -> weak rejejede -> strong + match ->
+"Password updated" -> then login with the NEW password works.
+
+================================================================================
+TASK 8 — POST /users/me/avatar                     (avatar upload)
+================================================================================
+WHAT: same as TASK 5, but for the profile picture.
+  Ek line me: user ka avatar upload + URL wapas do.
+
+Rules (identical to logo): image/jpeg|png|webp, <= 5MB ->
+  400 "PNG, JPG or WebP up to 5MB."
+Save as uuid under storage/uploads/, set users.avatar_url.
+Response: { "avatar_url": "/uploads/<uuid>.png" }
+Auth: any user.
+
+FRONTEND INTEGRATION (frontend/src/pages/Profile.tsx, handleSave ~line 52):
+
+    if (avatarFile) {
+      const fd = new FormData()
+      fd.append('file', avatarFile)
+      const { avatar_url } = await apiFetch<{ avatar_url: string }>(
+        '/users/me/avatar', { method: 'POST', body: fd },
+      )
+      patch.avatar_url = avatar_url
+    }
+    await updateProfile(patch)   // TASK 6
+
+VERIFY: choose image -> preview -> save -> sidebar avatar shows the real image
+(needs the same /uploads static mount + API_URL prefixing from TASK 5).
+
+================================================================================
+TASK 9 — Fix /auth/register for invited accounts
+================================================================================
+WHAT: right now register returns 400 "Email already registered" for ANY existing
+email — including placeholder users created by TASK 2 invites.
+  Ek line me: invite aaye huye user ko register hone do.
+
+Change register_user (routers/auth.py):
+  - If a User exists with that email:
+       * hashed_password is NULL (invited, pending) -> set the password,
+         flip membership status to "active", log in directly.
+       * otherwise -> keep 400 "Email already registered".
+  - Response stays UserResponse (now includes name/phone/avatar_url from TASK 6).
+
+VERIFY: invite ada@example.com -> register with that email -> succeeds -> belongs
+to the org now (members page shows status active).
+
+================================================================================
+TASK 10 — POST /auth/google                        (Google OAuth, server side)
+================================================================================
+WHAT: the frontend "Continue with Google" button is UI-only today
+(see frontend/src/components/auth/GoogleButton.tsx, TODO). This endpoint makes
+it real.
+  Ek line me: Google button ko kaam karo — Google se aya token verify karke user
+  login/register karo.
+
+Frontend flow you will wire AFTER this endpoint exists:
+  client Google Identity Services -> get an id_token -> POST it here.
+
+Body: { "id_token": "<google-jwt>" }
+
+Flow:
+  - Verify the token with Google's tokeninfo/userinfo endpoint (requests lib) or
+    the google-auth library; verify `aud` against your client id.
+  - Extract email + given_name/family_name.
+  - Upsert user: existing email -> link; else create User (hashed_password NULL
+    or random-unusable), name from profile.
+  - Create tokens exactly like login:
+        return { ...AuthService.create_token_user(db, user_id), "token_type": "bearer" }
+  - 400 if the token is invalid: "Invalid Google token."
+NOTE: leave the frontend click as-is (no-op OR trigger the Google popup) until
+this endpoint + a Google Cloud OAuth client id are configured. Document the
+CLIENT_ID env var you expect.
+
+VERIFY: (manual with real Google creds) button opens popup -> consent ->
+returning user is signed in; new user gets an account.
+
+================================================================================
+TASK 11 — Wire "Continue with Google" button to the OAuth flow
+================================================================================
+WHAT: connect the existing UI button to TASK 10.  (frontend task, listed here
+because it needs the backend endpoint first.)
+  - frontend/src/components/auth/GoogleButton.tsx: replace the TODO no-op with
+    the Google Identity Services SCRIPT + one-tap popup, get id_token, then
+        const tokens = await apiFetch<AuthTokens>('/auth/google', {
+          method: 'POST', body: JSON.stringify({ id_token }),
+        })
+        setTokens(tokens.access_token, tokens.refresh_token)
+  - Then navigate to /app (same as login) and call getMe().
+  - Add the Google Client ID via VITE_GOOGLE_CLIENT_ID env.
+VERIFY: real Google login round-trips into the dashboard.
+
+========================================================================
+CROSS-CUTTING NOTES
+========================================================================
+1. Static file serving is needed by TASKS 5, 8 (and displayed by 6):
+   app.mount('/uploads', StaticFiles(...)) in main.py. Frontend <img> src must
+   resolve to the backend — either build full URLs server-side or prefix
+   API_URL in the Avatar components. Pick one and keep it consistent.
+
+2. Error contract: always send {"detail": "..."}. The frontend
+   (lib/api.ts + lib/errors.ts) turns 400/401/403/404/409/422/429/5xx into
+   friendly messages automatically. Keep the exact detail strings listed in
+   each task so the UI copy + tests match.
+
+3. CORS is fully open (allow_origins=["*"]) — no change needed.
+
+4. Keep rate limiting on public OTP/email endpoints (TASK 7) to avoid abuse;
+   reuse app/core/rate_limiter.py.
+
+5. Do NOT commit real secrets (Google client secret, SMTP creds). They go in
+   .env via app/config.py Settings.
+
+========================================================================
+RECOMMENDED BUILD ORDER & TEST CHECKLIST
+========================================================================
+Order (each step independently verifiable):
+   1. Models/schemas migration (SECTION 2) + TASK 1  -> members list works
+   2. TASK 2 invite + TASK 9 register fix            -> invite->register flow
+   3. TASK 3 role/remove                             -> admin tools work
+   4. TASK 4 org edit  (+ /mine shape)               -> settings save
+   5. TASK 5 logo + static mount                     -> branding shows
+   6. TASK 6 profile + TASK 8 avatar                 -> profile edits
+   7. TASK 7 OTP 3-endpoint flow                     -> forgot password
+   8. TASK 10 + 11 Google OAuth                      -> open with real creds
+
+Checklist after each task:
+  [ ] Start backend (venv) + `npm run dev` (frontend)
+  [ ] Login with the existing test user (switch_1787938511188@docmind.ai)
+  [ ] Exercise the flow in the browser (see "VERIFY" under each task)
+  [ ] `npm run build && npm run lint` in frontend after any frontend swap
+  [ ] Confirm no 4xx/5xx beyond intentional ones and no console errors
+  [ ] Re-run the E2E harness in /tmp/opencode/e2e (features.js) if available
+
+Naming/locations (to keep consistent):
+  Routers: backend/app/routers/  (auth.py, organization.py, user.py optional)
+  Schemas: backend/app/schemas/  (user.py, organization.py)
+  Services: backend/app/services/ (user_service.py, otp_service.py new)
+  Uploads: backend/app/storage/uploads/
+  Models: backend/app/models/    (user.py, organization.py, password_reset_code.py)
+
+================================================================================
+END — happy building. When a task is done, update the matching frontend TODO
+marker from `// TODO(backend):` to real apiFetch code and commit.
+================================================================================
+================================================================================
+APPENDIX — ADDED DURING THE VISUAL/UX POLISH PASS (Aug 2026)
+================================================================================
+These were discovered while doing the frontend polish pass (light/dark theme,
+shared logo/asset work, action-styling audit). They are NOT required for the
+visual work to function — the frontend is self-contained via localStorage —
+but they close backend gaps if you want the same behavior across devices.
+
+--------------------------------------------------------------------------------
+TASK 12 — PATCH /users/me/theme            (persist theme preference)
+--------------------------------------------------------------------------------
+WHAT: the frontend now has a light/dark mode toggle (see frontend/FRONTEND.md).
+The preference is currently stored in the browser only (localStorage, key
+"docmind:theme"); it does NOT sync across a user's devices. If cross-device
+sync is desired, add a persistence layer for it.
+  Ek line me: user ki theme preference (dark/light) DB me save karo taaki
+  har device par same theme aaye.
+
+Model change:
+  users:
+    theme_preference   String  nullable, default null ("light" | "dark" | null)
+
+Wire shape (extend UserResponse from TASK 6):
+  { "theme_preference": "dark" | "light" | null }
+
+PATCH /users/me/theme
+  Body: { "theme_preference": "light" | "dark" }   // 422 if not one of the two
+  Auth: any logged-in user (get_current_user)
+  Response: 200 { "theme_preference": "light", "updated": true }
+  Notes: admin not required; null clears to system default (dark).
+
+FRONTEND INTEGRATION (frontend/src/context/ThemeContext.tsx, THEME only when the
+endpoint exists — the localStorage default stays so the app works offline):
+  - On app mount, read `user.theme_preference` (from GET /auth/me) as the
+    initial theme instead of localStorage.
+  - On toggle, fire-and-forget `await apiFetch('/users/me/theme', { method:
+    'PATCH', body: JSON.stringify({ theme_preference: next }) })`.
+  - Keep localStorage as a fast-path fallback when the call fails (offline).
+
+--------------------------------------------------------------------------------
+TASK 13 — GET /auth/me must return theme_preference
+--------------------------------------------------------------------------------
+WHAT: so the client can boot into the saved theme on a fresh device.
+  Ek line me: login /auth/me me theme_preference bhi bhejo.
+  Extend UserResponse (TASK 6) with theme_preference (nullable) and include it
+  in GET /auth/me response. No behavior change otherwise.
+
+--------------------------------------------------------------------------------
+NOTES / ALREADY COVERED (no new backend work needed from this pass):
+--------------------------------------------------------------------------------
+  - Logo/icon assets: the four "blank box" logo locations were unified onto a
+    single shared frontend SVG component (frontend/src/components/ui/Brand.tsx
+    -> <BrandMark/> / <DocGlyph/>). No backend image needed; the favicon is an
+    inline data-URI in frontend/index.html.
+  - Logo/avatar UPLOADS are already specified in TASK 5 (org logo) and TASK 8
+    (user avatar) above (POST multipart + /uploads static mount + apiFetch
+    FormData usage). This pass only restyled the picker button.
+  - The actions previously done as stray text links ("Change picture") are now
+    real buttons on the frontend; no endpoint changes.
+
+================================================================================
+APPENDIX — CHAT SESSION PERSISTENCE (added with the collapsible history panel)
+================================================================================
+Frontend now has a per-workspace chat history panel (toggle in the Ask & Chat
+header -> slide-in list). Sessions are WORKSPACE-scoped (chats are tied to a
+workspace's documents). Today it uses localStorage only (each browser is
+isolated). The endpoints below are what a real multi-user backend needs so
+history follows the user across devices AND survives backend restarts.
+
+Wire shapes (mirror frontend types):
+  Session:  { id, title, workspace_id, created_at, updated_at }
+  Message:  { id, session_id, role: "user"|"assistant", content, created_at }
+
+--------------------------------------------------------------------------------
+TASK 14 — POST /workspaces/{workspace_id}/sessions      (create session)
+--------------------------------------------------------------------------------
+WHAT: start a new empty chat session for a workspace.
+  Ek line me: workspace ke liye nayi chat session banao.
+Body: {} (title auto-derived from the first user message, or allow optional
+      { "title": "<optional>" }).
+Auth: any member of the workspace (required_membership).
+Response: 201 { "id": "<uuid>", "title": "New chat", "workspace_id": 1,
+                "created_at": "...", "updated_at": "..." }
+Notes: id is a UUID string (frontend sends/reads session ids, not ints).
+       Or .none() the need to re-send session_id here.
+
+--------------------------------------------------------------------
+TASK 15 — GET /workspaces/{workspace_id}/sessions        (list sessions)
+--------------------------------------------------------------------
+WHAT: list this workspace's sessions, newest first (for the history panel).
+  Ek line me: session list workspace ke hisaab se lao (naye pehle).
+Auth: any member.
+Response: [ { id, title, workspace_id, created_at, updated_at }, ... ]
+Notes: list only sessions of THIS workspace (do NOT return global/all).
+
+--------------------------------------------------------------------
+TASK 16 — GET /sessions/{session_id}/messages            (get messages)
+--------------------------------------------------------------------
+WHAT: fetch the full message transcript for one session.
+  Ek line me: ek session ke saare messages lao.
+Auth: member of the session's workspace.
+Response: [ { id, session_id, role, content, created_at }, ... ]
+Notes: return in chronological order. Frontend treats messages as immutable
+       once fetched; streaming runs add message rows as they complete.
+
+--------------------------------------------------------------------
+TASK 17 — DELETE /sessions/{session_id}                  (delete session)
+--------------------------------------------------------------------
+WHAT: permanently remove a session + all its messages.
+  Ek line me: session ko messages samet delete karo.
+Auth: member of the session's workspace.
+Response: 204 (or 200 {"detail":"Session deleted"}).
+Notes: cascade delete messages; confirm idempotency (404 "Session not found.").
+
+--------------------------------------------------------------------
+TASK 18 — POST /workspaces/{workspace_id}/sessions/{session_id}/messages
+         (send message / stream answer)
+--------------------------------------------------------------------
+WHAT: the existing chat stream endpoint should REQUIRE a session_id so answers
+are recorded into the right session.
+  Ek line me: message bhejo aur answer usi session me save karo.
+Body: existing chat body PLUS:
+      { "question": "...", "session_id": "<uuid>" }
+      (workspace_id already implied by the URL path.)
+Auth: any member.
+Notes:
+  - Persist the user message + the assistant answer into that session so the
+    transcript is complete after the stream ends.
+  - Rate limit per user/session like the existing chat endpoint.
+  - When no session exists yet (frontend may send one on first message) you can
+    auto-create it server-side from --question-- for the title and return the
+    session id in the stream headers or an initial JSON chunk.
+
+FRONTEND INTEGRATION MAP (only after any of the above exist):
+  - src/lib/chatSessions.ts    -> replace localStorage get/set with apiFetch
+                                  list/create/delete calls.
+  - src/hooks/useChatSessions.ts -> wire the loading state to the real GETs.
+  - src/pages/Chat.tsx         -> pass session_id into streamChatAnswer.
+
+--------------------------------------------------------------------------------
+TOAST/BACKEND CONFIRMATION GAPS (async action confirmations)
+--------------------------------------------------------------------------------
+Action            | Currently confirmed by       | Backend need
+------------------|------------------------------|--------------------------------------------
+Session deleted   | frontend (localStorage)      | 204 from TASK 17 (optional)
+Member invited    | TASK 2 response              | already returns the member row
+Org updated       | TASK 4 response              | already returns updated org
+Chat answer        | TASK 18 stream completion    | stream end == success signal
+No new endpoints required for toasts beyond the above.
