@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { FileImage, FileText, Info, Sheet, UploadCloud, X } from 'lucide-react'
+import { FileImage, FileText, Info, Sheet, X } from 'lucide-react'
+import { BrandMark } from '../ui/Brand'
 import type { DocumentRecord } from '../../types'
 import { ALLOWED_EXTENSIONS, extensionOf, uploadDocument } from '../../lib/documents'
 import { formatFileSize } from '../../lib/utils'
@@ -103,9 +104,9 @@ export function UploadDropzone({ organizationId, onUploaded }: UploadDropzonePro
       >
         <motion.div
           animate={{ scale: dragging ? 1.12 : 1 }}
-          className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-[var(--radius-lg)] bg-[var(--accent-grad)] text-[var(--bg-0)] shadow-[var(--glow-accent)]"
+          className="mx-auto mb-4 w-fit rounded-[var(--radius-lg)] shadow-[var(--glow-accent)]"
         >
-          <UploadCloud size={24} />
+          <BrandMark size={56} className="rounded-[var(--radius-lg)]" />
         </motion.div>
         <h3 className="font-display text-[16px] font-semibold">
           {dragging ? 'Drop to upload' : 'Drag & drop your documents'}
@@ -156,9 +157,9 @@ export function UploadDropzone({ organizationId, onUploaded }: UploadDropzonePro
                 </span>
               </div>
               <div className="mt-2 flex items-center gap-3">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--hover-strong)]">
                   <motion.div
-                    className={`h-full rounded-full ${item.status === 'error' ? 'bg-[var(--danger)]' : 'bg-[var(--accent-grad)]'}`}
+                    className={`h-full rounded-full ${item.status === 'error' ? 'bg-[var(--danger)]' : 'bg-accent-grad'}`}
                     animate={{ width: `${item.progress}%` }}
                     transition={{ ease: 'easeOut', duration: 0.3 }}
                   />
@@ -179,7 +180,7 @@ export function UploadDropzone({ organizationId, onUploaded }: UploadDropzonePro
                   ? 'bg-[var(--danger-soft)] text-[var(--danger)]'
                   : item.status === 'done'
                     ? 'bg-[var(--success-soft)] text-[var(--success)]'
-                    : 'bg-[rgba(255,255,255,0.08)] text-[var(--text-2)]'
+                    : 'bg-[var(--hover-strong)] text-[var(--text-2)]'
               }`}
             >
               {item.status === 'error' ? <X size={12} /> : item.status === 'done' ? '✓' : item.progress}

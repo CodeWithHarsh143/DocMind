@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { ToastProvider } from './context/ToastContext'
 import { OrgProvider } from './context/OrgContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { Spinner } from './components/ui/Spinner'
 import AppLayout, { RequireActiveOrg } from './components/layout/AppLayout'
 
@@ -66,7 +67,8 @@ export default function App() {
     <ToastProvider>
       <AuthProvider>
         <OrgProvider>
-          <BrowserRouter>
+          <ThemeProvider>
+            <BrowserRouter>
             <ScrollToTop />
             <Suspense fallback={<PageLoader />}>
               <Routes>
@@ -146,6 +148,7 @@ export default function App() {
               </Routes>
             </Suspense>
           </BrowserRouter>
+          </ThemeProvider>
         </OrgProvider>
       </AuthProvider>
     </ToastProvider>

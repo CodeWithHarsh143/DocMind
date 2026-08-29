@@ -18,6 +18,12 @@
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
 
+  /* Hover / interactive fills (theme-aware) */
+  --hover: rgba(255, 255, 255, 0.06);
+  --hover-strong: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(17, 17, 27, 0.6);
+  --aurora-grid: rgba(255, 255, 255, 0.03);
+
   /* Text */
   --text-1: #f1f2f8;
   --text-2: #a7abc2;
@@ -29,6 +35,7 @@
   --accent-2: #4cc9ff;
   --accent-grad: linear-gradient(135deg, #7c6cff 0%, #5ea8ff 60%, #4cc9ff 100%);
   --accent-soft: rgba(124, 108, 255, 0.14);
+  --on-accent: #08080d;
 
   /* Feedback */
   --success: #2dd4a7;
@@ -61,6 +68,56 @@
   --sidebar-w: 264px;
   --topbar-h: 64px;
   --container: 1120px;
+}
+
+/* ============================================================
+   Light theme — overrides the same design tokens. The purple
+   accent stays the brand color in both modes.
+   ============================================================ */
+[data-theme='light'] {
+  --bg-0: #f6f7fb;
+  --bg-1: #eef0f6;
+  --surface-1: #ffffff;
+  --surface-2: #f3f4f9;
+  --surface-3: #e9ebf3;
+
+  --border-subtle: rgba(15, 20, 40, 0.08);
+  --border: rgba(15, 20, 40, 0.12);
+  --border-strong: rgba(15, 20, 40, 0.2);
+
+  --hover: rgba(15, 20, 40, 0.05);
+  --hover-strong: rgba(15, 20, 40, 0.09);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --aurora-grid: rgba(15, 20, 40, 0.05);
+
+  --text-1: #191b26;
+  --text-2: #4b4f63;
+  --text-3: #7a7f96;
+
+  --accent-soft: rgba(124, 108, 255, 0.12);
+  --on-accent: #ffffff;
+
+  --success-soft: rgba(45, 212, 167, 0.14);
+  --warning-soft: rgba(245, 181, 68, 0.16);
+  --danger-soft: rgba(240, 93, 126, 0.14);
+  --info-soft: rgba(76, 201, 255, 0.18);
+
+  --shadow-sm: 0 1px 2px rgba(15, 20, 40, 0.08);
+  --shadow-md: 0 8px 24px -12px rgba(15, 20, 40, 0.16);
+  --shadow-lg: 0 24px 60px -20px rgba(15, 20, 40, 0.22);
+  --glow-accent: 0 0 0 1px rgba(124, 108, 255, 0.25), 0 8px 40px -12px rgba(124, 108, 255, 0.4);
+}
+
+/* Light-mode tweaks for substances that need explicit re-coloring */
+[data-theme='light'] .md :where(pre) {
+  background: #0b0b13;
+}
+[data-theme='light'] .md :where(code) {
+  background: var(--accent-soft);
+  color: #4b37c9;
+}
+[data-theme='light'] .island {
+  background: #ffffff;
 }
 
 * {
@@ -110,7 +167,7 @@ button {
 /* --- Toasts --- */
 .toast-region {
   position: fixed;
-  top: 20px;
+  bottom: 20px;
   right: 20px;
   z-index: 100;
   display: flex;
@@ -163,7 +220,7 @@ button {
   cursor: pointer;
 }
 .toast-close:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover);
   color: var(--text-1);
 }
 
@@ -328,8 +385,8 @@ button {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--aurora-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--aurora-grid) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(75% 55% at 50% 0%, #000 0%, transparent 75%);
 }
@@ -343,13 +400,13 @@ button {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--hover-strong);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--border-strong);
   background-clip: content-box;
 }
 
@@ -372,8 +429,19 @@ button {
   color: transparent;
 }
 
+/*
+ * Accent gradient background.
+ * NOTE: do NOT use `bg-accent-grad` anywhere — Tailwind compiles that
+ * to `background-color: var(--accent-grad)` which is INVALID for a
+ * linear-gradient() and silently renders transparent. Use this class instead;
+ * the `background` shorthand accepts the gradient in both themes.
+ */
+.bg-accent-grad {
+  background: var(--accent-grad);
+}
+
 .glass {
-  background: rgba(17, 17, 27, 0.6);
+  background: var(--glass-bg);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }

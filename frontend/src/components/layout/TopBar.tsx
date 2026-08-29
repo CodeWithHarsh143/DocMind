@@ -1,6 +1,7 @@
 import { Menu, ShieldCheck } from 'lucide-react'
 import { useOrg } from '../../context/OrgContext'
 import { Badge } from '../ui/Brand'
+import { ThemeToggle } from '../ui/ThemeToggle'
 
 interface TopBarProps {
   onMenu: () => void
@@ -13,7 +14,7 @@ export function TopBar({ onMenu }: TopBarProps) {
     <header className="flex h-[var(--topbar-h)] shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-1)]/60 px-4 backdrop-blur-lg sm:px-6">
       <button
         onClick={onMenu}
-        className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] text-[var(--text-2)] transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--text-1)] lg:hidden"
+        className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] text-[var(--text-2)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-1)] lg:hidden"
         aria-label="Open menu"
       >
         <Menu size={19} />
@@ -37,6 +38,8 @@ export function TopBar({ onMenu }: TopBarProps) {
         </span>
         <span className="text-[12px] font-medium text-[var(--text-2)]">AI Online</span>
       </div>
+
+      <ThemeToggle />
     </header>
   )
 }

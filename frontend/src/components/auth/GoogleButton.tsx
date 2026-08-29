@@ -19,7 +19,8 @@ export function GoogleButton({ disabled = false }: { disabled?: boolean }) {
       onClick={() => {
         // TODO: Google OAuth flow
       }}
-      className="gap-3 bg-white text-[#1f2937] hover:bg-gray-50"
+      className="gap-2"
+      style={{ background: '#ffffff', color: '#111827' }}
     >
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
         <path

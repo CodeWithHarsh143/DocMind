@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Navigate, Outlet } from 'react-router-dom'
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Building2, LogOut, MessageSquareText, LayoutDashboard, Files, Sparkles, Users, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -35,7 +35,9 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="px-5 pb-2 pt-5">
-        <Logo />
+        <Link to="/" onClick={onNavigate} aria-label="DocMind — go home">
+          <Logo />
+        </Link>
       </div>
 
       <div className="px-3">
@@ -53,7 +55,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
               `group relative flex items-center gap-3 rounded-[var(--radius-md)] px-3.5 py-2.5 text-[14px] font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-[var(--accent-soft)] text-white'
-                  : 'text-[var(--text-2)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--text-1)]'
+                  : 'text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-[var(--text-1)]'
               }`
             }
           >
@@ -62,7 +64,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
                 {isActive ? (
                   <motion.span
                     layoutId="nav-pill"
-                    className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-[var(--accent-grad)]"
+                    className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-accent-grad"
                   />
                 ) : null}
                 <Icon size={17} className={isActive ? 'text-[var(--accent-hi)]' : ''} />
@@ -86,7 +88,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           <NavLink
             to="/app/profile"
             onClick={onNavigate}
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-md)] transition-colors hover:bg-[rgba(255,255,255,0.05)]"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-md)] transition-colors hover:bg-[var(--hover)]"
             title="Edit profile"
           >
             <Avatar name={user?.name ?? user?.email ?? '?'} imageUrl={user?.avatar_url} size="sm" alt="Your profile picture" />
@@ -101,7 +103,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
           </NavLink>
           <button
             onClick={handleLogout}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-md)] text-[var(--text-3)] transition-colors hover:bg-[rgba(255,255,255,0.06)] hover:text-[var(--danger)]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-md)] text-[var(--text-3)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--danger)]"
             aria-label="Sign out"
             title="Sign out"
           >
@@ -116,6 +118,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
 export default function AppLayout() {
   const { organizationsLoading } = useOrg()
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const location = useLocation()
 
   return (
     <div className="flex h-dvh overflow-hidden">
@@ -167,7 +170,15 @@ export default function AppLayout() {
               <Spinner size={28} />
             </div>
           ) : (
-            <Outlet />
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="h-full"
+            >
+              <Outlet />
+            </motion.div>
           )}
         </main>
       </div>

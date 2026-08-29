@@ -19,7 +19,9 @@ export default function NotFoundPage() {
 
       <div className="relative flex w-full max-w-lg flex-col items-center text-center">
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="absolute -top-24">
-          <Logo />
+          <Link to="/" aria-label="DocMind — go home">
+            <Logo />
+          </Link>
         </motion.div>
 
         <div aria-hidden className="relative flex items-center justify-center gap-x-2 sm:gap-x-3">
@@ -41,7 +43,7 @@ export default function NotFoundPage() {
               className="absolute h-[56%] w-[56%] rounded-full border border-[var(--accent-2)]/30 [animation:pulse-soft_4s_ease-in-out_infinite_0.6s]"
             />
             <span className="absolute inset-0 [animation:orbit_5.5s_linear_infinite]">
-              <span className="absolute left-1/2 top-0 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--accent-grad)] shadow-[var(--glow-accent)]" />
+              <span className="absolute left-1/2 top-0 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-grad shadow-[var(--glow-accent)]" />
             </span>
           </span>
 

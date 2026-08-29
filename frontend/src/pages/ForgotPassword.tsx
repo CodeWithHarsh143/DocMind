@@ -136,7 +136,7 @@ function Stepper({ current }: { current: number }) {
                 done
                   ? 'bg-[var(--success-soft)] text-[var(--success)]'
                   : active
-                    ? 'bg-[var(--accent-grad)] text-[var(--bg-0)]'
+                    ? 'bg-accent-grad text-[var(--on-accent)]'
                     : 'border border-[var(--border-strong)] text-[var(--text-3)]'
               }`}
             >

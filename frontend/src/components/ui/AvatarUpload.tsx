@@ -103,8 +103,8 @@ export function AvatarUpload({
           </AnimatePresence>
 
           <span
-            className="mt-2 text-[12.5px] font-medium text-[var(--accent-hi)]"
-            style={{ position: 'absolute', bottom: -22 }}
+            className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-[12px] font-medium text-[var(--text-2)] transition-colors group-hover:border-[var(--border-strong)] group-hover:text-[var(--text-1)]"
+            style={{ position: 'absolute', bottom: -34, whiteSpace: 'nowrap' }}
           >
             {uploading ? 'Uploading…' : 'Change picture'}
           </span>

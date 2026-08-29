@@ -17,7 +17,9 @@ export default function ServerErrorPage() {
 
       <div className="relative flex w-full max-w-lg flex-col items-center text-center">
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="absolute -top-24">
-          <Logo />
+          <Link to="/" aria-label="DocMind — go home">
+            <Logo />
+          </Link>
         </motion.div>
 
         {/* Broken signal: two nodes whose link keeps failing to connect */}

@@ -15,7 +15,7 @@ export function ChatMessage({ message }: { message: ChatMessage }) {
       className={`flex w-full gap-3.5 ${isUser ? 'justify-end' : 'justify-start'}`}
     >
       {!isUser ? (
-        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--accent-grad)] text-[var(--bg-0)] shadow-[var(--shadow-sm)]">
+        <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-md)] bg-accent-grad text-[var(--on-accent)] shadow-[var(--shadow-sm)]">
           <Sparkles size={15} />
         </span>
       ) : null}
@@ -26,7 +26,7 @@ export function ChatMessage({ message }: { message: ChatMessage }) {
         }`}
       >
         {isUser ? (
-          <div className="rounded-[var(--radius-lg)] rounded-tr-md bg-[var(--accent-grad)] px-4 py-3 text-[14.5px] leading-relaxed text-white shadow-[var(--shadow-sm)]">
+          <div className="rounded-[var(--radius-lg)] rounded-tr-md bg-accent-grad px-4 py-3 text-[14.5px] leading-relaxed text-white shadow-[var(--shadow-sm)]">
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           </div>
         ) : (

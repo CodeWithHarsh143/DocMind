@@ -46,7 +46,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (title: string, kind: ToastKind = 'info', description?: string) => {
       const id = ++counter.current
       setToasts((prev) => [...prev.slice(-3), { id, kind, title, description }])
-      window.setTimeout(() => dismiss(id), 5200)
+      window.setTimeout(() => dismiss(id), 3200)
     },
     [dismiss],
   )
