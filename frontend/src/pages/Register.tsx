@@ -1,47 +1,76 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
+import { Sparkles } from 'lucide-react'
+import type { FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Field'
+import { PasswordInput } from '../components/ui/PasswordInput'
+import { PasswordRequirements } from '../components/ui/PasswordRequirements'
+import { FormErrorBanner } from '../components/ui/FormErrorBanner'
 import { AuthLayout } from '../components/auth/AuthLayout'
-import type { FormEvent } from 'react'
+import { GoogleButton } from '../components/auth/GoogleButton'
+import { OrDivider } from '../components/ui/OrDivider'
+import { useField, validateForm, focusFirstInvalid } from '../hooks/useFormValidation'
+import { emailValidator, passwordValidator, requiredValidator } from '../utils/validation'
+import { friendlyErrorMessage, isNetworkError } from '../lib/errors'
 
 export default function RegisterPage() {
   const { register } = useAuth()
-  const { success, error: throwError } = useToast()
+  const { success: toastSuccess, error: throwError } = useToast()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const email = useField<string>(emailValidator, '')
+  const password = useField<string>(passwordValidator, '')
+
+  const confirmValidator = useCallback(
+    (value: string) => {
+      const required = requiredValidator('Please confirm your password.')(value)
+      if (required) return required
+      if (value !== password.value) return 'Passwords do not match.'
+      return null
+    },
+    [password.value],
+  )
+  const confirmPassword = useField<string>(confirmValidator, '')
+
+  const emailRef = useRef<HTMLInputElement>(null)
+  const passwordRef = useRef<HTMLInputElement>(null)
+  const confirmRef = useRef<HTMLInputElement>(null)
+
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [canRetry, setCanRetry] = useState(false)
+  const [showRequirements, setShowRequirements] = useState(false)
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!email || !password) {
-      setFormError('Enter an email and password')
+  const handleSubmit = async (e?: FormEvent) => {
+    e?.preventDefault()
+    if (busy) return
+
+    const { valid } = validateForm([
+      { name: 'email', validate: email.validate },
+      { name: 'password', validate: password.validate },
+      { name: 'confirmPassword', validate: confirmPassword.validate },
+    ])
+    if (!valid) {
+      focusFirstInvalid([emailRef, passwordRef, confirmRef])
       return
     }
-    if (password.length < 8) {
-      setFormError('Password must be at least 8 characters')
-      return
-    }
-    if (password !== confirm) {
-      setFormError('Passwords do not match')
-      return
-    }
+
     setBusy(true)
     setFormError(null)
+    setCanRetry(false)
     try {
-      await register(email, password)
-      success('Account created', 'Sign in to get started')
-      navigate('/login')
+      await register(email.value, password.value)
+      toastSuccess('Account created', 'Sign in with your new credentials to get started.')
+      navigate('/login', { replace: true })
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Registration failed')
-      throwError('Registration failed', err instanceof Error ? err.message : undefined)
+      const message = friendlyErrorMessage(err, 'Could not create your account.')
+      setFormError(message)
+      setCanRetry(isNetworkError(err))
+      throwError('Registration failed', message)
     } finally {
       setBusy(false)
     }
@@ -51,47 +80,78 @@ export default function RegisterPage() {
     <AuthLayout>
       <h1 className="font-display text-[26px] font-semibold tracking-tight">Create your account</h1>
       <p className="mt-1.5 text-[14px] text-[var(--text-3)]">
-        Start asking questions about your documents in minutes.
+        Start chatting with your documents in minutes — free.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
-        <Input
-          type="email"
-          label="Email"
-          placeholder="you@company.com"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Input
-          type="password"
-          label="Password"
-          placeholder="At least 8 characters"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Input
-          type="password"
-          label="Confirm password"
-          placeholder="Repeat your password"
-          autoComplete="new-password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-        />
+      <div className="mt-8">
+        <GoogleButton />
+      </div>
+      <OrDivider className="mt-5" />
 
-        {formError ? (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-[var(--radius-md)] border border-[var(--danger)]/40 bg-[var(--danger-soft)]/40 px-3.5 py-2.5 text-[13px] text-[var(--danger)]"
-          >
-            {formError}
-          </motion.p>
-        ) : null}
+      <form onSubmit={handleSubmit} noValidate className="mt-5 flex flex-col gap-2.5">
+        <div>
+          <Input
+            ref={emailRef}
+            type="email"
+            label="Email"
+            placeholder="you@company.com"
+            autoComplete="email"
+            value={email.value}
+            error={email.error ?? undefined}
+            onChange={(e) => email.onChange(e.target.value)}
+            onBlur={email.onBlur}
+          />
+        </div>
 
-        <Button type="submit" loading={busy} size="lg" fullWidth className="mt-1">
-          Create account
+        <div className="mt-1.5">
+          <PasswordInput
+            ref={passwordRef}
+            label="Password"
+            placeholder="Create a strong password"
+            autoComplete="new-password"
+            value={password.value}
+            error={password.error ?? undefined}
+            onChange={(e) => {
+              password.onChange(e.target.value)
+              if (e.target.value.length > 0) setShowRequirements(true)
+            }}
+            onBlur={password.onBlur}
+            onFocus={() => setShowRequirements(true)}
+          />
+        </div>
+
+        <AnimatePresence initial={false}>
+          {showRequirements || password.touched ? (
+            <PasswordRequirements value={password.value} />
+          ) : null}
+        </AnimatePresence>
+
+        <div className="mt-1.5">
+          <PasswordInput
+            ref={confirmRef}
+            label="Confirm password"
+            placeholder="Re-enter your password"
+            autoComplete="new-password"
+            value={confirmPassword.value}
+            error={confirmPassword.error ?? undefined}
+            onChange={(e) => confirmPassword.onChange(e.target.value)}
+            onBlur={confirmPassword.onBlur}
+          />
+        </div>
+
+        <AnimatePresence initial={false}>
+          {formError ? (
+            <div className="mt-2">
+              <FormErrorBanner
+                message={formError}
+                onRetry={canRetry ? () => void handleSubmit() : undefined}
+              />
+            </div>
+          ) : null}
+        </AnimatePresence>
+
+        <Button type="submit" loading={busy} size="lg" fullWidth className="mt-2">
+          {busy ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
 
@@ -101,6 +161,11 @@ export default function RegisterPage() {
           Sign in
         </Link>
       </div>
+
+      <p className="mt-8 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-[var(--text-3)]">
+        <Sparkles size={12} className="text-[var(--accent-2)]" />
+        Streamed RAG answers · Workspace isolation · Markdown & code replies
+      </p>
     </AuthLayout>
   )
 }
