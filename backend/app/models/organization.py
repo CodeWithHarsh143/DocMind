@@ -12,6 +12,11 @@ class RoleEnum(str, Enum):
     USER = "user"
 
 
+class StatusEnum(str, Enum):
+    active = "active"
+    pending = "pending"
+
+
 class Organization(Base):
     __tablename__ = "organizations"
     id = Column(Integer, primary_key=True, index=True)
@@ -27,5 +32,7 @@ class OrganizationMember(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     role = Column(SQLEnum(RoleEnum), default=RoleEnum.USER)
+    description = Column(String, nullable=True)
+    status = Column(String, default="active")
     user = relationship("User", back_populates="organization_members")
     organization = relationship("Organization", back_populates="members")

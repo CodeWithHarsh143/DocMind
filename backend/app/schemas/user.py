@@ -16,7 +16,8 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     created_at: datetime
-
+    name: str
+    avatar_url: str
     model_config = ConfigDict(from_attributes=True)
 
 
