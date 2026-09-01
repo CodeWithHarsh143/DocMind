@@ -21,4 +21,19 @@ class NotAnAdminException(DocMindExceptions):
 
 class AlreadyMemberException(DocMindExceptions):
     status_code = 409
-    default_message = "User is already a member of this organization"
+    default_message = "That email is already a member of this organization."
+
+
+class YourAreAlreadyAMemberException(DocMindExceptions):
+    status_code = 400
+    default_message = "You are already a member of this organization"
+
+
+class MemberNotFoundException(DocMindExceptions):
+    status_code = 404
+    default_message = "Member not found."
+
+
+class NonRemoveAbleException(DocMindExceptions):
+    status_code = 400
+    default_message = "You cannot remove the last admin of the organization."
