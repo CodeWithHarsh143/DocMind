@@ -26,6 +26,8 @@ class OrganizationMemberResponse(BaseModel):
     email: str | None
     status: StatusEnum
     joined_at: datetime
+
+    # for database model to pydantic model conversion
     model_config = ConfigDict(from_attributes=True)
 
 
