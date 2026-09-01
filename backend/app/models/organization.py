@@ -22,6 +22,8 @@ class Organization(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    description = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
     members = relationship("OrganizationMember", back_populates="organization")
     documents = relationship("Document", back_populates="organization")
 
@@ -32,7 +34,7 @@ class OrganizationMember(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False)
     role = Column(SQLEnum(RoleEnum), default=RoleEnum.USER)
-    description = Column(String, nullable=True)
     status = Column(String, default="active")
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     user = relationship("User", back_populates="organization_members")
     organization = relationship("Organization", back_populates="members")

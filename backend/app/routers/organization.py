@@ -5,10 +5,13 @@ from app.routers.auth import get_current_user
 from app.models.user import User
 from app.models.organization import Organization, OrganizationMember, RoleEnum
 from app.schemas.organization import (
+    InviteMemberRequest,
     OrganizationCreate,
     OrganizationResponse,
     OrganizationMemberResponse,
+    OrganizationUpdate,
     OrganizationWithMembersResponse,
+    UpdateMemberRole,
 )
 from app.services.organization_service import OrganizationService
 
@@ -49,15 +52,10 @@ def my_organizations(
             {
                 "id": org.id,
                 "name": org.name,
+                "description": org.description,
+                "logo_url": org.logo_url,
                 "created_at": org.created_at,
-                "members": [
-                    {
-                        "id": membership.id,
-                        "user_id": membership.user_id,
-                        "organization_id": membership.organization_id,
-                        "role": membership.role,
-                    }
-                ],
+                "members": [OrganizationService._member_dict(db, membership)],
             }
         )
     return organizations
@@ -73,3 +71,66 @@ def add_member(
 ):
     OrganizationService.require_admin(db, org_id, current_user.id)
     return OrganizationService.add_member(db, org_id, user_id, role)
+
+
+@router.post("/{org_id}/members", response_model=OrganizationMemberResponse)
+def invite_member(
+    org_id: int,
+    invite_data: InviteMemberRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    OrganizationService.require_admin(db, org_id, current_user.id)
+    return OrganizationService.invite_member(
+        db, org_id, invite_data.email, invite_data.role, current_user
+    )
+
+
+@router.get("/{org_id}/members", response_model=list[OrganizationMemberResponse])
+def list_members(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    OrganizationService.required_membership(db, org_id, current_user.id)
+    return OrganizationService.list_members(db, org_id)
+
+
+@router.patch("/{org_id}/members/{user_id}", response_model=OrganizationMemberResponse)
+def change_member_role(
+    org_id: int,
+    user_id: int,
+    role_data: UpdateMemberRole,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    OrganizationService.require_admin(db, org_id, current_user.id)
+    return OrganizationService.change_member_role(
+        db, org_id, user_id, role_data.role, current_user
+    )
+
+
+@router.delete("/{org_id}/members/{user_id}")
+def remove_member(
+    org_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if user_id == current_user.id:
+        OrganizationService.required_membership(db, org_id, current_user.id)
+    else:
+        OrganizationService.require_admin(db, org_id, current_user.id)
+    OrganizationService.remove_member(db, org_id, user_id, current_user)
+    return {"detail": "Member removed"}
+
+
+@router.patch("/{org_id}", response_model=OrganizationResponse)
+def update_organization(
+    org_id: int,
+    update_data: OrganizationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    OrganizationService.require_admin(db, org_id, current_user.id)
+    return OrganizationService.update_organization(db, org_id, update_data)
