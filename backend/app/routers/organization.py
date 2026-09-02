@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+import aiofiles
+import os
+import uuid
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -14,6 +17,15 @@ from app.schemas.organization import (
     UpdateMemberRole,
 )
 from app.services.organization_service import OrganizationService
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+IMAGE_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+UPLOAD_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)), "storage", "uploads"
+)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
@@ -134,3 +146,42 @@ def update_organization(
 ):
     OrganizationService.require_admin(db, org_id, current_user.id)
     return OrganizationService.update_organization(db, org_id, update_data)
+
+
+@router.post("/{org_id}/logo")
+async def upload_org_logo(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    file: UploadFile = File(...),
+):
+    OrganizationService.require_admin(db, org_id, current_user.id)
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="PNG, JPG or WebP up to 5MB.")
+
+    extension = IMAGE_EXTENSIONS[file.content_type]
+    unique_name = f"{uuid.uuid4()}{extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+
+    file_size = 0
+    async with aiofiles.open(file_path, "wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            file_size += len(chunk)
+            if file_size > MAX_IMAGE_SIZE:
+                await f.close()
+                os.remove(file_path)
+                raise HTTPException(
+                    status_code=400, detail="PNG, JPG or WebP up to 5MB."
+                )
+            await f.write(chunk)
+
+    organization = db.query(Organization).filter(Organization.id == org_id).first()
+    if not organization:
+        os.remove(file_path)
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    organization.logo_url = f"/uploads/{unique_name}"
+    db.commit()
+    db.refresh(organization)
+    return {"logo_url": organization.logo_url}
