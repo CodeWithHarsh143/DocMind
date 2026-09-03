@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { resolveAssetUrl } from '../../lib/api'
 
 /**
  * Shared DocMind glyph — the single source of truth for the logo mark.
@@ -65,14 +66,16 @@ export function Avatar({
   const dims = { sm: 28, md: 36, lg: 44 }[size]
   const fontSize = { sm: 11, md: 14, lg: 17 }[size]
 
-  if (imageUrl) {
+  const resolvedUrl = resolveAssetUrl(imageUrl)
+
+  if (resolvedUrl) {
     return (
       <span
         className="grid shrink-0 place-items-center overflow-hidden rounded-full"
         style={{ width: dims, height: dims }}
       >
         <img
-          src={imageUrl}
+          src={resolvedUrl}
           alt={alt}
           loading="lazy"
           className="h-full w-full object-cover"

@@ -17,6 +17,7 @@ interface OrgContextValue {
     id: number,
     patch: { name?: string; description?: string | null; logo_url?: string | null },
   ) => Promise<void>
+  leaveOrganization: (orgId: number, userId: number) => Promise<void>
   setActiveOrganization: (org: OrganizationWithMembers | null) => void
 }
 
@@ -78,12 +79,16 @@ export function OrgProvider({ children }: { children: ReactNode }) {
 
   const updateOrganization = useCallback(
     async (id: number, patch: { name?: string; description?: string | null; logo_url?: string | null }) => {
-      // TODO(backend): PATCH /organizations/{org_id} — admin only, persists
-      // name/description/logo_url. Optimistically reflects locally for now.
-      setOrganizations((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)))
+      const updated = await orgApi.updateOrganization(id, patch)
+      setOrganizations((prev) => prev.map((o) => (o.id === id ? { ...o, ...updated } : o)))
     },
     [],
   )
+
+  const leaveOrganization = useCallback(async (orgId: number, userId: number) => {
+    await orgApi.leaveOrganization(orgId, userId)
+    setOrganizations((prev) => prev.filter((o) => o.id !== orgId))
+  }, [])
 
   const value = useMemo<OrgContextValue>(
     () => ({
@@ -93,6 +98,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       refreshOrganizations,
       createOrganization,
       updateOrganization,
+      leaveOrganization,
       setActiveOrganization,
     }),
     [
@@ -102,6 +108,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
       refreshOrganizations,
       createOrganization,
       updateOrganization,
+      leaveOrganization,
       setActiveOrganization,
     ],
   )

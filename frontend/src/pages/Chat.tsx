@@ -53,7 +53,12 @@ export default function ChatPage() {
     async (question: string) => {
       if (!activeOrg || streaming || !token) return
 
-      const { sessionId, assistantId } = appendUserMessage(question)
+      let sessionId = activeSessionId
+      if (!sessionId) {
+        sessionId = await createSession()
+      }
+
+      const { assistantId } = appendUserMessage(sessionId, question)
       streamBufferRef.current[assistantId] = ''
       const controller = new AbortController()
       abortRef.current = controller
@@ -64,6 +69,7 @@ export default function ChatPage() {
         await streamChatAnswer(
           activeOrg.id,
           question,
+          sessionId,
           accessToken,
           controller.signal,
           {
@@ -116,7 +122,7 @@ export default function ChatPage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeOrg, streaming, token, appendUserMessage, updateAssistantMessage],
+    [activeOrg, streaming, token, activeSessionId, createSession, appendUserMessage, updateAssistantMessage],
   )
 
   const handleSuggestion = (prompt: string) => {
@@ -126,7 +132,7 @@ export default function ChatPage() {
   const handleNewChat = () => {
     abortRef.current?.abort()
     setStreaming(false)
-    createSession()
+    void createSession()
   }
 
   if (!activeOrg) {

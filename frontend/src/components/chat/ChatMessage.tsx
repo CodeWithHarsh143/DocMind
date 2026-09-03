@@ -6,6 +6,7 @@ import { Avatar } from '../ui/Brand'
 
 export function ChatMessage({ message }: { message: ChatMessage }) {
   const isUser = message.role === 'user'
+  const authorName = message.user_name?.trim() || 'You'
 
   return (
     <motion.div
@@ -26,8 +27,13 @@ export function ChatMessage({ message }: { message: ChatMessage }) {
         }`}
       >
         {isUser ? (
-          <div className="rounded-[var(--radius-lg)] rounded-tr-md bg-accent-grad px-4 py-3 text-[14.5px] leading-relaxed text-white shadow-[var(--shadow-sm)]">
-            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          <div>
+            <div className="mb-1 flex items-center justify-end gap-2">
+              <span className="text-[12px] text-[var(--text-3)]">{authorName}</span>
+            </div>
+            <div className="rounded-[var(--radius-lg)] rounded-tr-md bg-accent-grad px-4 py-3 text-[14.5px] leading-relaxed text-white shadow-[var(--shadow-sm)]">
+              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            </div>
           </div>
         ) : (
           <div
@@ -50,7 +56,7 @@ export function ChatMessage({ message }: { message: ChatMessage }) {
         )}
       </div>
 
-      {isUser ? <Avatar name="You" size="sm" /> : null}
+      {isUser ? <Avatar name={authorName} size="sm" /> : null}
     </motion.div>
   )
 }

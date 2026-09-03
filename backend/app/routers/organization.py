@@ -2,7 +2,7 @@ import aiofiles
 import os
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models.user import User

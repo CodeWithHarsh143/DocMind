@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ChatMessage } from '../types'
+import type { ChatMessage, ChatSession, ChatSessionMessage } from '../types'
 import { uid } from '../lib/utils'
 import {
-  type ChatSession,
-  loadSessions,
-  saveSessions,
+  createSession as apiCreate,
+  deleteSession as apiDelete,
+  getSessionMessages,
+  listSessions,
   titleFromMessage,
 } from '../lib/chatSessions'
 
@@ -13,10 +14,13 @@ export interface ChatSessionController {
   activeSessionId: string | null
   activeMessages: ChatMessage[]
   loading: boolean
-  createSession: () => string
+  createSession: () => Promise<string>
   selectSession: (id: string) => void
-  deleteSession: (id: string) => void
-  appendUserMessage: (text: string) => { sessionId: string; assistantId: string }
+  deleteSession: (id: string) => Promise<void>
+  appendUserMessage: (
+    sessionId: string,
+    text: string,
+  ) => { sessionId: string; assistantId: string }
   updateAssistantMessage: (
     sessionId: string,
     assistantId: string,
@@ -26,101 +30,109 @@ export interface ChatSessionController {
 
 function latestOf(sessions: ChatSession[]): ChatSession | null {
   return sessions.reduce<ChatSession | null>(
-    (acc, s) => (acc && acc.updatedAt >= s.updatedAt ? acc : s),
+    (acc, s) => (acc && acc.updated_at >= s.updated_at ? acc : s),
     null,
   )
 }
 
-/**
- * Workspace-scoped chat session state. Persisted to localStorage (per org) so
- * the last active session survives a page refresh. A real multi-user version
- * would replace the localStorage layer with the backend endpoints (see
- * backendtasks.txt).
- */
+/** Convert a persisted backend message into the streamed UI shape. */
+function toChatMessage(m: ChatSessionMessage): ChatMessage {
+  return {
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    user_id: m.user_id ?? null,
+    user_name: m.user_name ?? null,
+  }
+}
+
 export function useChatSessions(orgId: number | undefined): ChatSessionController {
-  const [sessions, setSessions] = useState<ChatSession[]>(() =>
-    orgId ? loadSessions(orgId) : [],
-  )
+  const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(() => orgId !== undefined)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(false)
   const lastOrgRef = useRef<number | null>(null)
+  const messagesLoadRef = useRef<string | null>(null)
 
-  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
-
-  // Persist whenever the workspace-scoped list changes.
-  useEffect(() => {
-    if (orgId !== undefined) saveSessions(orgId, sessions)
-  }, [sessions, orgId])
-
-  // Reset + restore state whenever the workspace changes.
+  // Load the session list whenever the workspace changes.
   useEffect(() => {
     if (orgId === undefined || lastOrgRef.current === orgId) return
+    lastOrgRef.current = orgId
     setLoading(true)
-    // Simulate a short fetch for the loading state (replaced by a real GET later).
-    // lastOrgRef is set inside the timeout so React StrictMode's effect
-    // double-invoke (mount → cleanup → mount) doesn't permanently wedge
-    // `loading` to true: the cleanup clears the timer and the second run
-    // re-schedules it before the guard sees the org as handled.
-    const t = window.setTimeout(() => {
-      lastOrgRef.current = orgId
-      const stored = loadSessions(orgId)
-      setSessions(stored)
-      setActiveSessionId(latestOf(stored)?.id ?? null)
-      setLoading(false)
-    }, 260)
-    return () => window.clearTimeout(t)
+    setMessages([])
+    setActiveSessionId(null)
+    listSessions(orgId)
+      .then((list) => {
+        setSessions(list)
+        setActiveSessionId(list.length ? latestOf(list)!.id : null)
+      })
+      .catch(() => setSessions([]))
+      .finally(() => setLoading(false))
   }, [orgId])
 
-  const createSession = useCallback((): string => {
-    const now = Date.now()
-    const id = uid()
-    const session: ChatSession = {
-      id,
-      title: 'New chat',
-      createdAt: now,
-      updatedAt: now,
-      messages: [],
-    }
-    setSessions((prev) => [session, ...prev])
-    setActiveSessionId(id)
-    return id
-  }, [])
+  const loadMessages = useCallback(
+    async (sessionId: string) => {
+      messagesLoadRef.current = sessionId
+      try {
+        const list = await getSessionMessages(sessionId)
+        if (messagesLoadRef.current === sessionId) {
+          setMessages(list.map(toChatMessage))
+        }
+      } catch {
+        if (messagesLoadRef.current === sessionId) setMessages([])
+      }
+      if (messagesLoadRef.current === sessionId) messagesLoadRef.current = null
+    },
+    [],
+  )
 
-  const selectSession = useCallback((id: string) => {
-    setActiveSessionId(id)
-  }, [])
+  const createSession = useCallback(async (): Promise<string> => {
+    if (orgId === undefined) return ''
+    const created = await apiCreate(orgId)
+    setSessions((prev) => [
+      { ...created, messages: [] },
+      ...prev.filter((s) => s.id !== created.id),
+    ])
+    setActiveSessionId(created.id)
+    setMessages([])
+    return created.id
+  }, [orgId])
+
+  const selectSession = useCallback(
+    (id: string) => {
+      setActiveSessionId(id)
+      setMessages([])
+      void loadMessages(id)
+    },
+    [loadMessages],
+  )
 
   const deleteSession = useCallback(
-    (id: string) => {
-      const target = sessions.find((s) => s.id === id)
-      if (!target) return
+    async (id: string) => {
       const wasActive = activeSessionId === id
-      const next = sessions.filter((s) => s.id !== id)
-      setSessions(next)
-      if (wasActive) {
-        setActiveSessionId(next.length ? latestOf(next)!.id : null)
+      try {
+        await apiDelete(id)
+        setSessions((prev) => {
+          const next = prev.filter((s) => s.id !== id)
+          if (wasActive) {
+            const fallback = latestOf(next)
+            setActiveSessionId(fallback?.id ?? null)
+            setMessages([])
+            if (fallback) void loadMessages(fallback.id)
+          }
+          return next
+        })
+      } catch {
+        /* leave list unchanged on failure */
       }
     },
-    [sessions, activeSessionId],
+    [activeSessionId, loadMessages],
   )
 
   const appendUserMessage = useCallback(
-    (text: string): { sessionId: string; assistantId: string } => {
+    (sessionId: string, text: string): { sessionId: string; assistantId: string } => {
+      const now = new Date().toISOString()
       const assistantId = uid()
-      const now = Date.now()
-      let target = activeSession
-      let createdSession = false
-
-      if (!target) {
-        target = {
-          id: uid(),
-          title: titleFromMessage(text),
-          createdAt: now,
-          updatedAt: now,
-          messages: [],
-        }
-        createdSession = true
-      }
 
       const userMsg: ChatMessage = { id: uid(), role: 'user', content: text }
       const assistantMsg: ChatMessage = {
@@ -129,43 +141,36 @@ export function useChatSessions(orgId: number | undefined): ChatSessionControlle
         content: '',
         streaming: true,
       }
+      setMessages((prev) => [...prev, userMsg, assistantMsg])
 
-      if (!target.title || target.title === 'New chat') {
-        target = { ...target, title: titleFromMessage(text) }
-      }
-      target = {
-        ...target,
-        updatedAt: now,
-        messages: [...target.messages, userMsg, assistantMsg],
-      }
-
-      if (createdSession) {
-        setSessions((prev) => [target!, ...prev])
-        setActiveSessionId(target!.id)
-      } else {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === target!.id ? target! : s)),
-        )
-      }
-
-      return { sessionId: target!.id, assistantId }
-    },
-    [activeSession],
-  )
-
-  const updateAssistantMessage = useCallback(
-    (sessionId: string, assistantId: string, patch: Partial<ChatMessage>) => {
       setSessions((prev) =>
         prev.map((s) =>
           s.id === sessionId
             ? {
                 ...s,
-                updatedAt: Date.now(),
-                messages: s.messages.map((m) =>
-                  m.id === assistantId ? { ...m, ...patch } : m,
-                ),
+                title:
+                  !s.title || s.title === 'New chat'
+                    ? titleFromMessage(text)
+                    : s.title,
+                updated_at: now,
               }
             : s,
+        ),
+      )
+
+      return { sessionId, assistantId }
+    },
+    [],
+  )
+
+  const updateAssistantMessage = useCallback(
+    (sessionId: string, assistantId: string, patch: Partial<ChatMessage>) => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
+      )
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, updated_at: new Date().toISOString() } : s,
         ),
       )
     },
@@ -175,7 +180,7 @@ export function useChatSessions(orgId: number | undefined): ChatSessionControlle
   return {
     sessions,
     activeSessionId,
-    activeMessages: activeSession?.messages ?? [],
+    activeMessages: messages,
     loading,
     createSession,
     selectSession,

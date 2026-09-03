@@ -1,6 +1,10 @@
+from datetime import datetime, timezone
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from openai import OpenAI
+from app.models.chats import ChatMessage, ChatSession
 from app.models.chunk import DocumentChunk
 from app.config import settings
 from app.services.cache_service import set_cached_key
@@ -38,7 +42,12 @@ def build_rag_propmt(question: str, chunks: list[DocumentChunk]) -> str:
 
 
 async def stream_rag_answer(
-    question: str, chunks: list[DocumentChunk], organization_id: int
+    db: Session,
+    question: str,
+    chunks: list[DocumentChunk],
+    organization_id: int,
+    session_id: str,
+    user_id: int,
 ):
     prompt = build_rag_propmt(question, chunks)
     stream = client.chat.completions.create(
@@ -46,13 +55,26 @@ async def stream_rag_answer(
         messages=[{"role": "user", "content": prompt}],
         stream=True,
     )
-
     full_answer = ""
     for chunk in stream:
         if chunk.choices[0].delta.content:
             token = chunk.choices[0].delta.content
             full_answer += token
             yield token
+    assistant_msg = ChatMessage(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        content=full_answer,
+        role="assistant",
+        user_id=None,
+    )
+    db.add(assistant_msg)
+    db.commit()
+    db.refresh(assistant_msg)
+    db.query(ChatSession).filter(ChatSession.id == session_id).update(
+        {"updated_at": datetime.now(timezone.utc)}
+    )
+    db.commit()
     set_cached_key(
         organization_id=organization_id, question=question, answer=full_answer
     )

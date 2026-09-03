@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { History, MessageSquarePlus, Trash2 } from 'lucide-react'
-import type { ChatSession } from '../../lib/chatSessions'
+import type { ChatSession } from '../../types'
 import { relativeTime } from '../../lib/chatSessions'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { SkeletonRows } from '../ui/Feedback'
@@ -116,8 +116,9 @@ export function ChatHistoryPanel({
                             >
                               {s.title}
                             </div>
-                            <div className="text-[11.5px] text-[var(--text-3)]">
-                              {relativeTime(s.updatedAt)}
+                            <div className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-[var(--text-3)]">
+                              {s.owner_name ? <span>{s.owner_name}</span> : null}
+                              <span>{relativeTime(s.updated_at)}</span>
                             </div>
                           </div>
                           <button

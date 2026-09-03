@@ -15,3 +15,5 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     organization_members = relationship("OrganizationMember", back_populates="user")
     documents = relationship("Document", back_populates="owner")
+    chat_sessions = relationship("ChatSession", back_populates="owner")
+    chat_messages = relationship("ChatMessage", back_populates="user")

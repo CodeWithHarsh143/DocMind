@@ -20,17 +20,20 @@ export interface StreamHandlers {
 export async function streamChatAnswer(
   organizationId: number,
   question: string,
+  sessionId: string,
   token: string,
   signal: AbortSignal,
   handlers: StreamHandlers,
 ) {
-  const params = new URLSearchParams({ question })
-  const res = await fetch(`${API_URL}/documents/chat/${organizationId}?${params.toString()}`, {
+  const body = JSON.stringify({ question, session_id: sessionId })
+  const res = await fetch(`${API_URL}/documents/chat/${organizationId}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'text/event-stream',
+      'Content-Type': 'application/json',
     },
+    body,
     signal,
   })
 
