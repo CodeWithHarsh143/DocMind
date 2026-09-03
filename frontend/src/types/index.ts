@@ -67,6 +67,34 @@ export interface ChatMessage {
   content: string
   streaming?: boolean
   error?: boolean
+  /** Author attribution for user messages (loaded from the API transcript). */
+  user_id?: number | null
+  user_name?: string | null
+}
+
+/** Wire shape of a persisted chat session (backend tasks 14–18). */
+export interface ChatSession {
+  id: string
+  title: string
+  workspace_id: number
+  created_at: string
+  updated_at: string
+  messages: ChatMessage[]
+  /** Owner attribution (which member created this session). */
+  owner_id?: number | null
+  owner_name?: string | null
+}
+
+/** Wire shape of a persisted chat message (backend task 16/18). */
+export interface ChatSessionMessage {
+  id: string
+  session_id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+  /** Author attribution for user messages. */
+  user_id?: number | null
+  user_name?: string | null
 }
 
 export interface ChatRequest {

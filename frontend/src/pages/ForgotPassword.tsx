@@ -9,6 +9,7 @@ import { PasswordInput } from '../components/ui/PasswordInput'
 import { PasswordRequirements } from '../components/ui/PasswordRequirements'
 import { FormErrorBanner } from '../components/ui/FormErrorBanner'
 import { useToast } from '../context/ToastContext'
+import { apiFetch } from '../lib/api'
 import type { RefObject } from 'react'
 import { useField, validateForm, focusFirstInvalid } from '../hooks/useFormValidation'
 import {
@@ -47,6 +48,7 @@ export default function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState('')
   const [identifierError, setIdentifierError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [verifiedCode, setVerifiedCode] = useState('')
   const identifierRef = useRef<HTMLInputElement>(null)
 
   const { error: throwError } = useToast()
@@ -66,9 +68,11 @@ export default function ForgotPasswordPage() {
     setBusy(true)
     setIdentifierError(null)
     try {
-      // TODO: backend call — POST /auth/request-otp { email | phone }
-      // Sends a one-time code to the identifier. Placeholder below.
-      await new Promise((r) => setTimeout(r, 600))
+      await apiFetch('/auth/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: identifier.trim() }),
+        auth: false,
+      })
       setPhase('otp')
     } catch {
       throwError('Could not send code', 'Please try again.')
@@ -103,13 +107,18 @@ export default function ForgotPasswordPage() {
           {phase === 'otp' ? (
             <OtpStep
               identifier={identifier}
-              onVerified={() => setPhase('reset')}
+              onVerified={(code) => {
+                setVerifiedCode(code)
+                setPhase('reset')
+              }}
               onBack={() => setPhase('identify')}
             />
           ) : null}
 
           {phase === 'reset' ? (
             <ResetStep
+              identifier={identifier}
+              code={verifiedCode}
               onBack={() => setPhase('otp')}
               onDone={() => setPhase('done')}
             />
@@ -219,7 +228,7 @@ function OtpStep({
   onBack,
 }: {
   identifier: string
-  onVerified: () => void
+  onVerified: (code: string) => void
   onBack: () => void
 }) {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''))
@@ -227,15 +236,6 @@ function OtpStep({
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const refs = useRef<Array<HTMLInputElement | null>>([])
-  const { info } = useToast()
-  const showHint = useRef(false)
-
-  useEffect(() => {
-    if (!showHint.current) {
-      showHint.current = true
-      info('Demo build', 'Use any 6-digit code — sending & verification are placeholders.')
-    }
-  }, [info])
 
   useEffect(() => {
     if (countdown <= 0) return
@@ -283,10 +283,13 @@ function OtpStep({
     setVerifying(true)
     setError(null)
     try {
-      // TODO: backend call — POST /auth/verify-otp { identifier, code }
-      // Validates the code then issues a reset token. Placeholder below.
-      await new Promise((r) => setTimeout(r, 700))
-      onVerified()
+      const code = digits.join('')
+      await apiFetch('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ identifier, code }),
+        auth: false,
+      })
+      onVerified(code)
     } catch {
       setError('That code did not verify. Please try again.')
     } finally {
@@ -295,7 +298,15 @@ function OtpStep({
   }
 
   const resend = async () => {
-    // TODO: backend call — POST /auth/request-otp (resend)
+    try {
+      await apiFetch('/auth/request-otp', {
+        method: 'POST',
+        body: JSON.stringify({ identifier }),
+        auth: false,
+      })
+    } catch {
+      // silently ignore — user can retry
+    }
     setCountdown(RESEND_COOLDOWN_S)
     setDigits(Array(OTP_LENGTH).fill(''))
     focusIndex(0)
@@ -380,7 +391,17 @@ function OtpStep({
   )
 }
 
-function ResetStep({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
+function ResetStep({
+  identifier,
+  code,
+  onBack,
+  onDone,
+}: {
+  identifier: string
+  code: string
+  onBack: () => void
+  onDone: () => void
+}) {
   const password = useField<string>(passwordValidator, '')
   const confirmValidator = useCallback(
     (value: string) => {
@@ -411,9 +432,15 @@ function ResetStep({ onBack, onDone }: { onBack: () => void; onDone: () => void 
     setBusy(true)
     setError(null)
     try {
-      // TODO: backend call — POST /auth/reset-password { code, new_password }
-      // Sets the new password once the OTP is verified. Placeholder below.
-      await new Promise((r) => setTimeout(r, 800))
+      await apiFetch('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier,
+          code,
+          new_password: password.value,
+        }),
+        auth: false,
+      })
       onDone()
     } catch {
       setError('We could not reset your password. Please try again.')

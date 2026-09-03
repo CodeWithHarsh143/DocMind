@@ -49,8 +49,6 @@ export default function MembersPage() {
 
   const { members, loading, error, refresh, addMember, setRole, removeMember } = useOrgMembers(
     orgId,
-    user,
-    ownRole,
   )
 
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -68,7 +66,7 @@ export default function MembersPage() {
     setBusyId(member.id)
     try {
       const target = member.role === 'admin' ? 'user' : 'admin'
-      await setRole(member.id, target)
+      await setRole(member.user_id, target)
       success(
         target === 'admin' ? 'Admin added' : 'Admin removed',
         `@ ${member.email} is now ${target === 'admin' ? 'an admin' : 'a member'}.`,
@@ -84,7 +82,7 @@ export default function MembersPage() {
     if (!removeTarget) return
     setBusyId(removeTarget.id)
     try {
-      await removeMember(removeTarget.id)
+      await removeMember(removeTarget.user_id)
       success('Member removed', `${removeTarget.email} was removed from the organization.`)
       setRemoveTarget(null)
     } catch (err) {

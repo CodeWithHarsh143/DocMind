@@ -1,14 +1,5 @@
-import type { ChatMessage } from '../types'
-
-export interface ChatSession {
-  id: string
-  title: string
-  createdAt: number
-  updatedAt: number
-  messages: ChatMessage[]
-}
-
-const KEY_PREFIX = 'docmind:chat:sessions:'
+import { apiFetch } from './api'
+import type { ChatSession, ChatSessionMessage } from '../types'
 
 /** Truncate the first user message to a tidy session title. */
 export function titleFromMessage(text: string, max = 40): string {
@@ -16,37 +7,42 @@ export function titleFromMessage(text: string, max = 40): string {
   return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean
 }
 
-export function loadSessions(orgId: number): ChatSession[] {
-  try {
-    const raw = window.localStorage.getItem(`${KEY_PREFIX}${orgId}`)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as ChatSession[]
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+/** List this workspace's sessions, newest first. */
+export function listSessions(orgId: number): Promise<ChatSession[]> {
+  return apiFetch<ChatSession[]>(`/organizations/${orgId}/sessions`)
 }
 
-export function saveSessions(orgId: number, sessions: ChatSession[]): void {
-  try {
-    window.localStorage.setItem(`${KEY_PREFIX}${orgId}`, JSON.stringify(sessions))
-  } catch {
-    /* ignore quota / privacy-mode errors */
-  }
+/** Create a new empty session for a workspace. */
+export function createSession(orgId: number): Promise<ChatSession> {
+  return apiFetch<ChatSession>(`/organizations/${orgId}/sessions`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+/** Fetch the full message transcript for one session, oldest first. */
+export function getSessionMessages(sessionId: string): Promise<ChatSessionMessage[]> {
+  return apiFetch<ChatSessionMessage[]>(`/sessions/${sessionId}/messages`)
+}
+
+/** Permanently remove a session and its messages. */
+export async function deleteSession(sessionId: string): Promise<void> {
+  await apiFetch(`/sessions/${sessionId}`, { method: 'DELETE' })
 }
 
 /** Relative timestamp: "2h ago", "Yesterday", "Aug 20", else a full date. */
-export function relativeTime(ts: number): string {
-  const diff = Date.now() - ts
+export function relativeTime(ts: string | number): string {
+  const time = typeof ts === 'string' ? new Date(ts).getTime() : ts
+  const diff = Date.now() - time
   const minute = 60 * 1000
   const hour = 60 * minute
   const day = 24 * hour
 
-  if (diff < minute) return 'Just now'
+  if (Number.isNaN(time) || diff < minute) return 'Just now'
   if (diff < hour) return `${Math.floor(diff / minute)}m ago`
   if (diff < day) return `${Math.floor(diff / hour)}h ago`
 
-  const date = new Date(ts)
+  const date = new Date(time)
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()

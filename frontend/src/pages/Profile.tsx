@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { AtSign, BadgeCheck, Save, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { apiFetch } from '../lib/api'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Field'
 import { Badge } from '../components/ui/Brand'
@@ -55,10 +56,13 @@ export default function ProfilePage() {
       let nextAvatar = baseline.avatar_url // when not changing avatar
 
       if (avatarFile && avatarPreview) {
-        // TODO(backend): POST /uploads/avatar (multipart, jpg/png/webp, <= 5MB)
-        // → { avatar_url }. Simulated upload delay below.
-        await new Promise((r) => setTimeout(r, 900))
-        nextAvatar = avatarPreview
+        const fd = new FormData()
+        fd.append('file', avatarFile)
+        const { avatar_url } = await apiFetch<{ avatar_url: string }>(
+          '/users/me/avatar',
+          { method: 'POST', body: fd },
+        )
+        nextAvatar = avatar_url
       }
 
       await updateProfile({

@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import * as authApi from '../lib/auth'
-import { AUTH_EVENT, clearTokens, getAccessToken, ApiError } from '../lib/api'
+import { AUTH_EVENT, clearTokens, getAccessToken, ApiError, apiFetch } from '../lib/api'
 import { isNetworkError } from '../lib/errors'
 import type { User } from '../types'
 
@@ -91,10 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateProfile = useCallback(async (patch: ProfilePatch) => {
-    // TODO: OTP verification step before calling update API — backend pending
-    // (PATCH /auth/me). Reflects the change locally so the UI stays consistent
-    // until the endpoint ships.
-    setUser((prev) => (prev ? { ...prev, ...patch } : prev))
+    const updated = await apiFetch<User>('/users/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+    setUser((prev) => (prev ? { ...prev, ...updated } : prev))
   }, [])
 
   const logout = useCallback(async () => {

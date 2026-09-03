@@ -1,5 +1,13 @@
 export const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
+/** Resolve a backend asset path (e.g. `/uploads/x.png`) to an absolute URL. */
+export function resolveAssetUrl(path?: string | null): string | null {
+  if (!path) return null
+  if (/^(https?:)?\/\//.test(path)) return path
+  if (path.startsWith('/')) return `${API_URL}${path}`
+  return path
+}
+
 export const AUTH_EVENT = 'docmind:auth-expired'
 
 const ACCESS_KEY = 'docmind.access_token'

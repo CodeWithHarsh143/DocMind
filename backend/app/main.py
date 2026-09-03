@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 from app.database import engine, Base
-from app.routers import auth, organization, document, user
+from app.routers import auth, organization, document, user, sessions, sessions
 from app.core.exceptions import DocMindExceptions
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "storage", "uploads")
@@ -37,4 +37,6 @@ app.include_router(auth.router)
 app.include_router(organization.router)
 app.include_router(document.router)
 app.include_router(user.router)
+app.include_router(sessions.org_router)
+app.include_router(sessions.session_router)
 Base.metadata.create_all(bind=engine)

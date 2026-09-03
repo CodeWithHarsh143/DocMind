@@ -1,11 +1,15 @@
+from datetime import datetime, timezone
+
 import aiofiles
 import os
 from fastapi import Depends, APIRouter, UploadFile, Form, File, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from app.models.chats import ChatSession, ChatMessage
 from app.routers.auth import get_current_user
 from app.models.document import Document
 from app.database import get_db
+from app.schemas.chats import ChatRequest
 from app.schemas.document import DocumentCreate, DocumentResponse
 from app.models import User
 from app.services.chunking.embedding_service import generate_embedding
@@ -110,15 +114,50 @@ def get_document(
 @rate_limit(limit=10, window_seconds=60)
 async def chat_with_document(
     organization_id: int,
-    question: str,
+    body: ChatRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     OrganizationService.required_membership(
         db=db, organization_id=organization_id, user_id=current_user.id
     )
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    session_id = body.session_id
+    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if not session:
+        new_session = ChatSession(
+            id=str(uuid.uuid4()),
+            workspace_id=organization_id,
+            owner_id=current_user.id,
+            title=question[:50],
+        )
+        db.add(new_session)
+        db.commit()
+        db.refresh(new_session)
+        session_id = new_session.id
+    elif session.workspace_id != organization_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Session does not belong to the specified organization",
+        )
+    user_msg = ChatMessage(
+        id=str(uuid.uuid4()),
+        session_id=session_id,
+        content=question,
+        role="user",
+        user_id=current_user.id,
+    )
+    db.add(user_msg)
+    db.commit()
+    db.refresh(user_msg)
     cached = get_cached_answer(organization_id=organization_id, question=question)
     if cached:
+        db.query(ChatSession).filter(ChatSession.id == session_id).update(
+            {"updated_at": datetime.now(timezone.utc)}
+        )
+        db.commit()
 
         async def cached_stream():
             yield cached
@@ -133,7 +172,12 @@ async def chat_with_document(
         )
     return StreamingResponse(
         stream_rag_answer(
-            question=question, chunks=chunks, organization_id=organization_id
+            db=db,
+            question=question,
+            chunks=chunks,
+            organization_id=organization_id,
+            session_id=session_id,
+            user_id=current_user.id,
         ),
         media_type="text/event-stream",
     )

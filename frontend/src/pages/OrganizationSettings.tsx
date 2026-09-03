@@ -1,12 +1,16 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Building2, Lock, Save, ShieldCheck, X } from 'lucide-react'
+import { Building2, Lock, LogOut, Save, ShieldCheck, X } from 'lucide-react'
 import { useOrg } from '../context/OrgContext'
+import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import * as orgApi from '../lib/organizations'
 import { Button } from '../components/ui/Button'
 import { Input, Textarea } from '../components/ui/Field'
 import { Badge } from '../components/ui/Brand'
 import { AvatarUpload } from '../components/ui/AvatarUpload'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { useField, validateForm, focusFirstInvalid } from '../hooks/useFormValidation'
 import {
   organizationDescriptionValidator,
@@ -37,8 +41,10 @@ export default function OrganizationSettingsPage() {
 }
 
 function OrganizationDetails({ org }: { org: OrganizationWithMembers }) {
-  const { activeOrg, updateOrganization } = useOrg()
+  const { activeOrg, updateOrganization, leaveOrganization } = useOrg()
+  const { user } = useAuth()
   const { success, error: throwError } = useToast()
+  const navigate = useNavigate()
   const isAdmin = activeOrg?.members?.[0]?.role === 'admin'
   const ownRole = activeOrg?.members?.[0]?.role ?? 'user'
 
@@ -86,19 +92,36 @@ function OrganizationDetails({ org }: { org: OrganizationWithMembers }) {
   const logoUrl = logoFile ? logoPreview : org.logo_url ?? null
 
   const handleSaveLogo = async () => {
-    // TODO(backend): POST /organizations/{org_id}/logo — multipart upload,
-    // returns { logo_url }. Invoked when the file is picked and saved.
     if (!logoFile || savingLogo) return
     setSavingLogo(true)
     try {
-      await new Promise((r) => setTimeout(r, 900))
-      await updateOrganization(org.id, { logo_url: logoPreview })
+      const { logo_url } = await orgApi.uploadLogo(org.id, logoFile)
+      await updateOrganization(org.id, { logo_url })
       setLogoFile(null)
       success('Logo updated', 'The new logo is now in use.')
     } catch (err) {
       throwError('Could not upload logo', err instanceof Error ? err.message : undefined)
     } finally {
       setSavingLogo(false)
+    }
+  }
+
+  // ---- Leave organization ----
+  const [leaveOpen, setLeaveOpen] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+
+  const handleLeave = async () => {
+    if (!user || leaving) return
+    setLeaving(true)
+    try {
+      await leaveOrganization(org.id, user.id)
+      success('Left organization', `You are no longer a member of "${org.name}".`)
+      setLeaveOpen(false)
+      navigate('/app')
+    } catch (err) {
+      throwError('Could not leave', err instanceof Error ? err.message : undefined)
+    } finally {
+      setLeaving(false)
     }
   }
 
@@ -254,6 +277,44 @@ function OrganizationDetails({ org }: { org: OrganizationWithMembers }) {
         You are <Badge tone={ownRole === 'admin' ? 'info' : 'neutral'}>{ownRole === 'admin' ? 'Admin' : 'Member'}</Badge>{' '}
         of this organization.
       </p>
+
+      {/* Leave organization */}
+      <section
+        className="rounded-[var(--radius-lg)] border border-[var(--danger)]/25 bg-[var(--danger-soft)]/30 p-5 sm:p-6"
+      >
+        <div className="mb-1 flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-[var(--danger-soft)] text-[var(--danger)]">
+            <LogOut size={16} />
+          </span>
+          <div>
+            <h2 className="font-display text-[15px] font-semibold">Leave organization</h2>
+            <p className="text-[12.5px] text-[var(--text-3)]">
+              You will lose access to this workspace and its documents.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <Button variant="danger" leftIcon={<LogOut size={15} />} onClick={() => setLeaveOpen(true)}>
+            Leave organization
+          </Button>
+        </div>
+        {ownRole === 'admin' ? (
+          <p className="mt-3 flex items-center gap-1.5 text-[12px] text-[var(--text-3)]">
+            <ShieldCheck size={13} />
+            If you are the only admin, promote another member to admin before leaving.
+          </p>
+        ) : null}
+      </section>
+
+      <ConfirmDialog
+        open={leaveOpen}
+        onClose={() => setLeaveOpen(false)}
+        onConfirm={() => void handleLeave()}
+        busy={leaving}
+        title="Leave organization?"
+        description={`You will lose access to "${org.name}" and its documents. This cannot be undone.`}
+        confirmLabel="Leave organization"
+      />
     </div>
   )
 }
