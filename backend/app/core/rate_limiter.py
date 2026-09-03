@@ -38,3 +38,14 @@ def rate_limit(limit: int = 10, window_seconds: int = 60):
         return wrapper
 
     return decorator
+
+
+def check_rate_limit_by_key(key: str, limit: int, window_seconds: int) -> bool:
+    """Rate limit by arbitrary string key (e.g. identifier, IP)."""
+    with redis_conn.pipeline() as pipe:
+        pipe.incr(key)
+        pipe.ttl(key)
+        current, ttl = pipe.execute()
+    if ttl == -1:
+        redis_conn.expire(key, window_seconds)
+    return current <= limit
