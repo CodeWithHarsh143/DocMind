@@ -132,6 +132,7 @@ class OrganizationService:
             "status": membership.status,
             "email": user.email if user else None,
             "name": user.name if user else None,
+            "avatar_url": user.avatar_url if user else None,
             "joined_at": membership.joined_at,
         }
 
@@ -145,7 +146,7 @@ class OrganizationService:
         return membership
 
     @staticmethod
-    def _is_last_admin(db: Session, organization_id: int, admin_id: int) -> bool:
+    def _is_last_admin(db: Session, organization_id: int) -> bool:
         admin_count = (
             db.query(OrganizationMember)
             .filter(
@@ -170,7 +171,7 @@ class OrganizationService:
         if membership.user_id == current_user.id:
             raise NonRemoveAbleException("You cannot change your own role.")
         if membership.role == RoleEnum.ADMIN and OrganizationService._is_last_admin(
-            db, organization_id, membership.id
+            db, organization_id
         ):
             raise NonRemoveAbleException("The last admin cannot be demoted.")
         membership.role = role
@@ -186,7 +187,7 @@ class OrganizationService:
             db, organization_id, target_user_id
         )
         if membership.role == RoleEnum.ADMIN and OrganizationService._is_last_admin(
-            db, organization_id, membership.id
+            db, organization_id
         ):
             raise NonRemoveAbleException()
         db.delete(membership)

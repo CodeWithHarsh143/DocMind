@@ -14,6 +14,8 @@ class DocumentResponse(BaseModel):
     content: str | None = None
     created_at: datetime
     owner_id: int
+    owner_name: str | None = None
+    owner_avatar_url: str | None = None
     organization_id: int
     processing_status: str
 

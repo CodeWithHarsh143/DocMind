@@ -17,3 +17,11 @@ class Document(Base):
     organization = relationship("Organization", back_populates="documents")
     file_path = Column(String, nullable=True)
     processing_status = Column(String, default="pending")
+
+    @property
+    def owner_name(self) -> str | None:
+        return self.owner.name if self.owner else None
+
+    @property
+    def owner_avatar_url(self) -> str | None:
+        return self.owner.avatar_url if self.owner else None

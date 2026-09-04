@@ -1,7 +1,8 @@
-from sqlalchemy import Column, DateTime, Integer, String, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, String, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime, timezone
+
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
@@ -33,6 +34,7 @@ class ChatMessage(Base):
     content = Column(String, nullable=False)
     role = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    sources = Column(JSON, nullable=True, default=list)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     user = relationship("User", back_populates="chat_messages")
     session = relationship("ChatSession", back_populates="messages")
