@@ -26,6 +26,7 @@ interface AuthContextValue {
   token: string | null
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
+  loginWithGoogle: (idToken: string) => Promise<void>
   updateProfile: (patch: ProfilePatch) => Promise<void>
   logout: () => Promise<void>
 }
@@ -90,6 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authApi.register({ email, password })
   }, [])
 
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    await authApi.loginWithGoogle(idToken)
+    const me = await authApi.getMe()
+    setUser(me)
+    setStatus('authenticated')
+  }, [])
+
   const updateProfile = useCallback(async (patch: ProfilePatch) => {
     const updated = await apiFetch<User>('/users/me/profile', {
       method: 'PATCH',
@@ -113,10 +121,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: getAccessToken(),
       login,
       register,
+      loginWithGoogle,
       updateProfile,
       logout,
     }),
-    [user, status, login, register, updateProfile, logout],
+    [user, status, login, register, loginWithGoogle, updateProfile, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

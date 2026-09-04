@@ -1,26 +1,90 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../ui/Button'
+import { useAuth } from '../../context/AuthContext'
 
-/**
- * "Continue with Google" button — UI only. The onClick is intentionally a
- * no-op placeholder that never silently succeeds.
- *
- * TODO(backend + frontend): implement the real OAuth exchange
- * (`POST /oauth/google` token exchange, user creation/lookup). Until then this
- * button does nothing but tell the user it's coming soon; see the backend
- * task table for the endpoint contract.
- */
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: {
+            client_id: string
+            callback: (response: { credential: string }) => void
+          }) => void
+          prompt: () => void
+        }
+      }
+    }
+  }
+}
+
+const GIS_SRC = 'https://accounts.google.com/gsi/client'
+
 export function GoogleButton({ disabled = false }: { disabled?: boolean }) {
+  const { loginWithGoogle } = useAuth()
+  const navigate = useNavigate()
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    if (!clientId) return
+    if (window.google?.accounts?.id) {
+      initGoogle()
+      return
+    }
+
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${GIS_SRC}"]`,
+    )
+    if (existing) {
+      existing.addEventListener('load', initGoogle)
+      return () => existing.removeEventListener('load', initGoogle)
+    }
+
+    const script = document.createElement('script')
+    script.src = GIS_SRC
+    script.async = true
+    script.defer = true
+    script.onload = initGoogle
+    document.head.appendChild(script)
+
+    function initGoogle() {
+      window.google!.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (response) => {
+          try {
+            await loginWithGoogle(response.credential)
+            navigate('/app', { replace: true })
+          } catch {
+            // error handled by auth context / toast
+          }
+        },
+      })
+      setReady(true)
+    }
+
+    return () => {
+      script.removeEventListener('load', initGoogle)
+    }
+  }, [clientId, loginWithGoogle, navigate])
+
+  const handleClick = () => {
+    if (ready) window.google?.accounts.id.prompt()
+  }
+
+  const isDisabled = disabled || !clientId || !ready
+
   return (
     <Button
       type="button"
       variant="secondary"
       fullWidth
-      disabled={disabled}
-      onClick={() => {
-        // TODO: Google OAuth flow
-      }}
+      disabled={isDisabled}
+      onClick={handleClick}
       className="gap-2"
       style={{ background: '#ffffff', color: '#111827' }}
+      title={!clientId ? 'Google sign-in not configured' : undefined}
     >
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
         <path

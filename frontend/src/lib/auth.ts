@@ -31,6 +31,15 @@ export async function getMe(): Promise<User> {
   return apiFetch<User>('/auth/me')
 }
 
+export async function loginWithGoogle(idToken: string): Promise<AuthTokens> {
+  const tokens = await apiFetch<AuthTokens>('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ id_token: idToken }),
+  })
+  setTokens(tokens.access_token, tokens.refresh_token)
+  return tokens
+}
+
 export async function logout() {
   const refreshToken = getRefreshToken()
   try {
