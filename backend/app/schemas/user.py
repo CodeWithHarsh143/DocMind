@@ -92,5 +92,5 @@ class ResetPassword(BaseModel):
         return v
 
 
-class GoogleOAuthRequest(BaseModel):
+class googleAuthRequest(BaseModel):
     id_token: str

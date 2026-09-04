@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.document import Document
 from app.models.user import User
 from app.services.organization_service import OrganizationService
@@ -28,5 +28,8 @@ class DocumentService:
         OrganizationService.required_membership(db, organization_id, current_user.id)
 
         return (
-            db.query(Document).filter(Document.organization_id == organization_id).all()
+            db.query(Document)
+            .options(joinedload(Document.owner))
+            .filter(Document.organization_id == organization_id)
+            .all()
         )

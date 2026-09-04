@@ -20,6 +20,8 @@ class ChatMessageResponse(BaseModel):
     role: str
     user_id: int | None = None
     user_name: str | None = None
+    user_avatar_url: str | None = None
+    sources: list[dict] | None = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 

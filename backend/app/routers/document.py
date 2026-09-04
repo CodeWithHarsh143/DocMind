@@ -18,7 +18,11 @@ from app.services.organization_service import OrganizationService
 import uuid
 from app.tasks.document_tasks import process_document_tasks
 from app.queue import document_queue
-from app.services.rag_service import search_similar_chunks, stream_rag_answer
+from app.services.rag_service import (
+    search_similar_chunks,
+    stream_rag_answer,
+    build_source_payload,
+)
 from app.services.cache_service import get_cached_answer
 from app.core.rate_limiter import rate_limit
 
@@ -142,6 +146,13 @@ async def chat_with_document(
             status_code=400,
             detail="Session does not belong to the specified organization",
         )
+    else:
+        # A session created as "New chat" gets its real title from the first question.
+        if not session.title or session.title == "New chat":
+            db.query(ChatSession).filter(ChatSession.id == session.id).update(
+                {"title": question[:50]}
+            )
+            db.commit()
     user_msg = ChatMessage(
         id=str(uuid.uuid4()),
         session_id=session_id,
@@ -170,6 +181,9 @@ async def chat_with_document(
             status_code=404,
             detail="No relevant documents found. If you just uploaded documents, they may still be processing — try again in a moment.",
         )
+    # Build the source payload while the session is still open; the streaming
+    # generator runs after the request session is torn down.
+    sources = build_source_payload(chunks)
     return StreamingResponse(
         stream_rag_answer(
             db=db,
@@ -178,6 +192,7 @@ async def chat_with_document(
             organization_id=organization_id,
             session_id=session_id,
             user_id=current_user.id,
+            sources=sources,
         ),
         media_type="text/event-stream",
     )

@@ -24,8 +24,9 @@ class OrganizationMemberResponse(BaseModel):
     role: RoleEnum
     name: str | None
     email: str | None
-    status: StatusEnum
-    joined_at: datetime
+    avatar_url: str | None = None
+    status: StatusEnum | None = None
+    joined_at: datetime | None = None
 
     # for database model to pydantic model conversion
     model_config = ConfigDict(from_attributes=True)
