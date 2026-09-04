@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 from datetime import datetime
 import re
-from pydantic import field_validator
 
 
 class UserCreate(BaseModel):
@@ -91,3 +90,7 @@ class ResetPassword(BaseModel):
         if not any(c in "!@#$%^&*()_+-=[]{}|;:',.<>?/" for c in v):
             raise ValueError("Password must contain a special character")
         return v
+
+
+class GoogleOAuthRequest(BaseModel):
+    id_token: str

@@ -1,5 +1,6 @@
 import hashlib, secrets, logging
-from docx import settings
+import httpx
+from app.config import settings
 from jose import jwt
 import hmac
 from fastapi import Depends, HTTPException, logger, status, APIRouter
@@ -20,6 +21,7 @@ from app.schemas.user import (
     RefreshTokenRequest,
     VerifyOtp,
     ResetPassword,
+    GoogleOAuthRequest,
 )
 from datetime import datetime, timedelta, timezone
 from app.queue import redis_conn
@@ -211,3 +213,77 @@ def reset_password(body: ResetPassword, db: Session = Depends(get_db)):
     # db.query(RefreshToken).filter(RefreshToken.user_id == user.id).delete()
 
     return {"detail": "Password updated"}
+
+
+@router.post("/google")
+def google_login(body: GoogleOAuthRequest, db: Session = Depends(get_db)):
+    GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
+    try:
+        resp = httpx.get(
+            GOOGLE_TOKENINFO_URL,
+            params={"id_token": body.id_token},
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid Google token.")
+        token_data = resp.json()
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to verify Google token. Please try again.",
+        )
+
+    google_client_id = settings.google_client_id
+    aud = token_data.get("aud")
+    if google_client_id and aud != google_client_id:
+        raise HTTPException(status_code=401, detail="Invalid Google token.")
+
+    email = token_data.get("email")
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid Google token.")
+
+    email_verified = token_data.get("email_verified")
+    if str(email_verified).lower() != "true":
+        raise HTTPException(
+            status_code=400,
+            detail="Google account email is not verified.",
+        )
+
+    given_name = token_data.get("given_name")
+    family_name = token_data.get("family_name")
+    name_parts = [p for p in (given_name, family_name) if p]
+    display_name = " ".join(name_parts) if name_parts else None
+    picture = token_data.get("picture")
+
+    user = db.query(User).filter(User.email == email).first()
+
+    if user:
+        updates = {}
+        if display_name and not user.name:
+            updates["name"] = display_name
+        if picture and not user.avatar_url:
+            updates["avatar_url"] = picture
+        if updates:
+            for k, v in updates.items():
+                setattr(user, k, v)
+            db.commit()
+            db.refresh(user)
+    else:
+        user = User(
+            email=email,
+            hashed_password=None,
+            name=display_name,
+            avatar_url=picture,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    db.query(OrganizationMember).filter(
+        OrganizationMember.user_id == user.id,
+        OrganizationMember.status == "pending",
+    ).update({"status": "active"})
+    db.commit()
+
+    tokens = AuthService.create_token_user(db=db, user_id=user.id)
+    return {**tokens, "token_type": "bearer"}
