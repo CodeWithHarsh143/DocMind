@@ -9,6 +9,9 @@ export default defineConfig({
       '/auth': 'http://localhost:8000',
       '/organizations': 'http://localhost:8000',
       '/documents': 'http://localhost:8000',
+      '/users': 'http://localhost:8000',
+      '/sessions': 'http://localhost:8000',
+      '/uploads': 'http://localhost:8000',
     },
   },
 })

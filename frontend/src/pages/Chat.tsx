@@ -79,6 +79,9 @@ export default function ChatPage() {
                 content: streamBufferRef.current[assistantId],
               })
             },
+            onSources: (sources) => {
+              updateAssistantMessage(sessionId, assistantId, { sources })
+            },
             onError: async (err) => {
               if (err instanceof ApiStreamError && err.status === 401) {
                 const refreshed = await refreshAccessToken()

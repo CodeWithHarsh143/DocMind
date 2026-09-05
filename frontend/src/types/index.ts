@@ -51,6 +51,8 @@ export interface DocumentRecord {
   content: string | null
   created_at: string
   owner_id: number
+  owner_name?: string | null
+  owner_avatar_url?: string | null
   organization_id: number
   processing_status: DocumentStatus
 }
@@ -67,12 +69,15 @@ export interface ChatMessage {
   content: string
   streaming?: boolean
   error?: boolean
+  /** Grounding evidence surfaced by the RAG stream (document_source chips). */
+  sources?: ChunkSource[]
   /** Author attribution for user messages (loaded from the API transcript). */
   user_id?: number | null
   user_name?: string | null
+  user_avatar_url?: string | null
+  created_at?: string
 }
 
-/** Wire shape of a persisted chat session (backend tasks 14–18). */
 export interface ChatSession {
   id: string
   title: string
@@ -92,9 +97,12 @@ export interface ChatSessionMessage {
   role: 'user' | 'assistant'
   content: string
   created_at: string
+  /** Grounding evidence surfaced by the RAG stream (document_source chips). */
+  sources?: ChunkSource[]
   /** Author attribution for user messages. */
   user_id?: number | null
   user_name?: string | null
+  user_avatar_url?: string | null
 }
 
 export interface ChatRequest {

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Eye, FileImage, FileText, Hourglass, LoaderCircle, Sheet } from 'lucide-react'
 import type { DocumentRecord } from '../../types'
 import { getDocument } from '../../lib/documents'
-import { Badge } from '../ui/Brand'
+import { Badge, Avatar } from '../ui/Brand'
 import { Spinner } from '../ui/Spinner'
 import { Modal } from '../ui/Modal'
 import { formatDate } from '../../lib/utils'
@@ -71,9 +71,17 @@ export function DocumentCard({ document }: { document: DocumentRecord }) {
         </div>
 
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[14.5px] font-semibold text-[var(--text-1)]" title={document.title}>
-            {document.title}
-          </h3>
+          <div className="flex items-center gap-2.5">
+            <Avatar
+              name={document.owner_name ?? '?'}
+              imageUrl={document.owner_avatar_url ?? null}
+              size="sm"
+              alt="Uploaded by"
+            />
+            <h3 className="truncate text-[14.5px] font-semibold text-[var(--text-1)]" title={document.title}>
+              {document.title}
+            </h3>
+          </div>
           <p className="mt-1 text-[12px] text-[var(--text-3)]">
             Added {formatDate(document.created_at)} · ID #{document.id}
           </p>

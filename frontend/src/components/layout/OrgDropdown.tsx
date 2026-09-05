@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Building2, Check, ChevronsUpDown, LoaderCircle, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, LoaderCircle, Plus } from 'lucide-react'
 import { useOrg } from '../../context/OrgContext'
 import { useToast } from '../../context/ToastContext'
+import { Avatar } from '../ui/Brand'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Field'
@@ -61,8 +62,8 @@ export function OrgDropdown({ onSelect }: OrgDropdownProps) {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-accent-grad/15 text-[var(--accent-hi)]">
-          <Building2 size={16} />
+        <span className="shrink-0">
+          <Avatar name={activeOrg?.name ?? '?'} imageUrl={activeOrg?.logo_url ?? null} size="sm" alt="Workspace logo" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--text-3)]">
@@ -111,7 +112,7 @@ export function OrgDropdown({ onSelect }: OrgDropdownProps) {
                         : 'text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-[var(--text-1)]'
                     }`}
                   >
-                    <Building2 size={14} className="shrink-0 text-[var(--text-3)]" />
+                    <Avatar name={org.name} imageUrl={org.logo_url ?? null} size="sm" alt={`${org.name} logo`} />
                     <span className="min-w-0 flex-1 truncate">{org.name}</span>
                     {activeOrg?.id === org.id ? <Check size={14} className="shrink-0 text-[var(--accent-hi)]" /> : null}
                   </button>

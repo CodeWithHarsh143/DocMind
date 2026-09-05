@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, FilePlus2, Files, MessageSquareText, Sparkles, UploadCloud } from 'lucide-react'
+import { ArrowRight, Files, MessageSquareText, Sparkles, UploadCloud } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useOrg } from '../context/OrgContext'
@@ -8,6 +8,7 @@ import { useDocuments } from '../hooks/useDocuments'
 import { Modal } from '../components/ui/Modal'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Field'
+import { Avatar } from '../components/ui/Brand'
 import { EmptyState } from '../components/ui/Feedback'
 import { useToast } from '../context/ToastContext'
 
@@ -101,7 +102,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <h1 className="font-display text-2xl font-semibold">
-                Welcome, <span className="gradient-text">{user ? emailFirstName(user.email) : 'there'}</span>
+                Welcome, <span className="gradient-text">{user?.name || emailFirstName(user?.email ?? '')}</span>
               </h1>
               <p className="mx-auto mt-2 max-w-md text-[14.5px] text-[var(--text-3)]">
                 Create a workspace to upload documents and chat with them. It's the first step toward
@@ -139,7 +140,7 @@ export default function DashboardPage() {
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-[26px] font-semibold tracking-tight">
-              Good to see you, {user ? emailFirstName(user.email) : 'friend'}{' '}
+              Good to see you, {user?.name || emailFirstName(user?.email ?? '')}{' '}
             </h1>
             <p className="mt-1 text-[14px] text-[var(--text-3)]">
               Here's what's happening in <span className="font-medium text-[var(--text-2)]">{activeOrg.name}</span>.
@@ -208,8 +209,13 @@ export default function DashboardPage() {
                       to="/app/documents"
                       className="flex items-center gap-3 rounded-[var(--radius-md)] border border-transparent px-3 py-2.5 transition-colors hover:border-[var(--border)] hover:bg-[var(--surface-2)]"
                     >
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-hi)]">
-                        <FilePlus2 size={15} />
+                      <span className="shrink-0">
+                        <Avatar
+                          name={doc.owner_name ?? doc.title}
+                          imageUrl={doc.owner_avatar_url ?? null}
+                          size="sm"
+                          alt="Uploaded by"
+                        />
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-[var(--text-1)]">
                         {doc.title}

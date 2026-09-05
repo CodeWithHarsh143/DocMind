@@ -2,8 +2,10 @@ export function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-export function formatDate(input: string | Date): string {
+export function formatDate(input: string | Date | null | undefined): string {
+  if (!input) return ''
   const date = typeof input === 'string' ? new Date(input) : input
+  if (Number.isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',

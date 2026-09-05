@@ -19,12 +19,46 @@ const STATUS_MESSAGES: Record<number, string> = {
 
 /** Messages the backend already phrases well for end users; surface them as-is. */
 const USER_FRIENDLY_DETAILS = new Set([
+  // auth
   'Incorrect email or password',
   'Email already registered',
+  'Invalid refresh token',
+  'Refresh token expired',
+  'OTP expired or not found.',
+  'Too many failed attempts.',
+  'Invalid OTP.',
+  'Invalid Google token',
+  'Invalid Google token.',
+  'Unable to verify Google token. Please try again.',
+  'Google token does not contain email.',
+  'Google email not verified.',
+  // organizations / members
   'Organization name already exists',
-  'Unsupported file type.',
+  'Organization not found',
+  'You are not a member of this organization',
+  'You are not an admin of this organization',
+  'That email is already a member of this organization.',
+  'You are already a member of this organization',
+  'Member not found.',
+  'You cannot change your own role.',
+  'You cannot remove the last admin of the organization.',
+  'You cannot leave the last admin of the organization.',
+  // uploads
+  'PNG, JPG or WebP up to 5MB.',
+  'File does not exist',
+  'Document Not Found',
+  // chat / sessions
+  'Question cannot be empty',
+  'Session not found.',
+  'You do not have permission to delete this session',
+  'Session does not belong to the specified organization',
+  'No relevant documents found. If you just uploaded documents, they may still be processing — try again in a moment.',
+  // rate limiting
   'Rate limit exceeded',
 ])
+
+/** Backend messages that start with a user-facing prefix but are dynamic. */
+const USER_FRIENDLY_PREFIXES = ['Unsupported file type.']
 
 function meaningfulDetail(message: string): boolean {
   const trimmed = message.trim()
@@ -57,7 +91,14 @@ export function friendlyErrorMessage(err: unknown, fallback: string): string {
     if (err.status === 0) return NETWORK_MESSAGE
 
     const detail = err.message.trim()
-    if (detail && meaningfulDetail(detail) && USER_FRIENDLY_DETAILS.has(detail)) return detail
+    if (
+      detail &&
+      meaningfulDetail(detail) &&
+      (USER_FRIENDLY_DETAILS.has(detail) ||
+        USER_FRIENDLY_PREFIXES.some((p) => detail.startsWith(p)))
+    ) {
+      return detail
+    }
 
     return STATUS_MESSAGES[err.status] ?? fallback
   }

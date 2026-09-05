@@ -176,7 +176,7 @@ export default function MembersPage() {
                       <tr key={member.id} className="transition-colors hover:bg-[var(--surface-2)]/60">
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <Avatar name={member.name ?? member.email} size="md" />
+                            <Avatar name={member.name ?? member.email} imageUrl={member.avatar_url} size="md" />
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="truncate text-[13.5px] font-medium text-[var(--text-1)]">
@@ -198,7 +198,7 @@ export default function MembersPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5 text-[12.5px] text-[var(--text-2)]">
-                          {formatDate(member.joined_at)}
+                          {member.joined_at ? formatDate(member.joined_at) : 'Joined recently'}
                         </td>
                         {isAdmin ? (
                           <td className="px-5 py-3.5">
@@ -257,7 +257,7 @@ export default function MembersPage() {
                     className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-1)]/70 p-4"
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar name={member.name ?? member.email} size="md" />
+                      <Avatar name={member.name ?? member.email} imageUrl={member.avatar_url} size="md" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="truncate text-[13.5px] font-medium text-[var(--text-1)]">
@@ -275,7 +275,7 @@ export default function MembersPage() {
                         {member.status === 'active' ? 'Active' : 'Invitation pending'}
                       </span>
                       <span className="ml-auto text-[12px] text-[var(--text-3)]">
-                        Joined {formatDate(member.joined_at)}
+                        {member.joined_at ? `Joined ${formatDate(member.joined_at)}` : 'Joined recently'}
                       </span>
                     </div>
                     {isAdmin && !isSelf ? (
