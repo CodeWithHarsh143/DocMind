@@ -1,31 +1,31 @@
-# ---- Core Web Framework (Phase 1) ----
+# ---- Core Web Framework  ----
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.1
 
-# ---- Database & ORM (Phase 1-2) ----
+# ---- Database & ORM ----
 sqlalchemy==2.0.36
 alembic==1.14.0
 psycopg2-binary==2.9.10
 asyncpg==0.30.0
 
-# ---- Auth & Security (Phase 1) ----
+# ---- Auth & Security  ----
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 email-validator==2.2.0
 python-multipart==0.0.20
 
-# ---- File Parsing (Phase 3) ----
+# ---- File Parsing  ----
 pypdf==5.1.0
 python-docx==1.1.2
 
-# ---- Redis & Background Queue (Phase 4) ----
+# ---- Redis & Background Queue ----
 redis==5.2.1
 rq==2.1.0
 
-# ---- Embeddings / AI / RAG (Phase 5) ----
+# ---- Embeddings / AI / RAG  ----
 openai==1.59.6
 pgvector==0.3.6
 tiktoken==0.8.0
@@ -33,10 +33,13 @@ tiktoken==0.8.0
 # ---- Env & Config ----
 python-dotenv==1.0.1
 
-# ---- Dev & Testing (Phase 9) ----
+# ---- Dev & Testing ----
 pytest==8.3.4
 pytest-asyncio==0.25.1
 httpx==0.28.1
 
 #--------FileUploading------------
 aiofiles==24.1.0
+
+#-------Email Sending------------
+resend

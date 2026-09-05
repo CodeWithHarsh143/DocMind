@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../ui/Button'
 import { useAuth } from '../../context/AuthContext'
 
@@ -31,6 +31,8 @@ const GIS_SRC = 'https://accounts.google.com/gsi/client'
 export function GoogleButton({ disabled = false }: { disabled?: boolean }) {
   const { loginWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = searchParams.get('next')
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
   const [ready, setReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export function GoogleButton({ disabled = false }: { disabled?: boolean }) {
           callback: async (response) => {
             try {
               await loginWithGoogle(response.credential)
-              navigate('/app', { replace: true })
+              navigate(next && next.startsWith('/') ? next : '/app', { replace: true })
             } catch {
               // error handled by auth context / toast
             }
@@ -96,7 +98,7 @@ export function GoogleButton({ disabled = false }: { disabled?: boolean }) {
       script.removeEventListener('load', initGoogle)
       script.removeEventListener('error', handleScriptError)
     }
-  }, [clientId, loginWithGoogle, navigate])
+  }, [clientId, loginWithGoogle, navigate, next])
 
   const handleClick = () => {
     if (!ready || !window.google?.accounts?.id) return

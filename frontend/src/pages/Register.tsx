@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import type { FormEvent } from 'react'
@@ -21,6 +21,8 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const { success: toastSuccess, error: throwError } = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = searchParams.get('next')
 
   const email = useField<string>(emailValidator, '')
   const password = useField<string>(passwordValidator, '')
@@ -65,7 +67,9 @@ export default function RegisterPage() {
     try {
       await register(email.value, password.value)
       toastSuccess('Account created', 'Sign in with your new credentials to get started.')
-      navigate('/login', { replace: true })
+      navigate(next && next.startsWith('/') ? `/login?next=${encodeURIComponent(next)}` : '/login', {
+        replace: true,
+      })
     } catch (err) {
       const message = friendlyErrorMessage(err, 'Could not create your account.')
       setFormError(message)

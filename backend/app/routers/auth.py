@@ -28,6 +28,7 @@ from datetime import datetime, timedelta, timezone
 from app.queue import redis_conn
 from fastapi.security import OAuth2PasswordRequestForm
 from app.services.auth_service import AuthService
+from app.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(
@@ -130,10 +131,18 @@ def request_otp(request: RequestOtp, db: Session = Depends(get_db)):
         value=f"{code_hash}:0",
         time=timedelta(minutes=10),
     )
-    logger.info(f"OTP generated for {identifier}: {code}")
+    try:
+        EmailService.send_otp_email(to=identifier, code=code)
+    except Exception:
+        logger.info(
+            "OTP email failed to send to %s; falling back to log: %s",
+            identifier,
+            code,
+            exc_info=True,
+        )
     return {
         "expires_in": 600,
-        "message": "OTP generated successfully. Check logs for the OTP.",
+        "message": "OTP generated successfully. Check your email for the code.",
     }
 
 
