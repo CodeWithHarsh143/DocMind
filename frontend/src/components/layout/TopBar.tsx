@@ -1,6 +1,6 @@
 import { Menu, ShieldCheck } from 'lucide-react'
 import { useOrg } from '../../context/OrgContext'
-import { Badge } from '../ui/Brand'
+import { Badge, Avatar } from '../ui/Brand'
 import { ThemeToggle } from '../ui/ThemeToggle'
 
 interface TopBarProps {
@@ -21,6 +21,9 @@ export function TopBar({ onMenu }: TopBarProps) {
       </button>
 
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
+        {activeOrg ? (
+          <Avatar name={activeOrg.name} imageUrl={activeOrg.logo_url ?? null} size="sm" alt="Workspace logo" />
+        ) : null}
         <span className="truncate font-display text-[15px] font-medium">
           {activeOrg ? activeOrg.name : 'Workspace'}
         </span>

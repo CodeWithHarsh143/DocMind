@@ -9,7 +9,8 @@ export interface OrgMember {
   role: OrganizationRole
   email: string
   name: string | null
-  joined_at: string
+  avatar_url?: string | null
+  joined_at: string | null
   status: MemberStatus
 }
 

@@ -2,11 +2,32 @@ import { motion } from 'framer-motion'
 import { AlertTriangle, Sparkles } from 'lucide-react'
 import type { ChatMessage } from '../../types'
 import { MessageContent } from './MessageContent'
+import { SourceCitations } from './SourceCitations'
 import { Avatar } from '../ui/Brand'
+import { useAuth } from '../../context/AuthContext'
+
+function messageTime(ts?: string | null): string {
+  if (!ts) return ''
+  const date = new Date(ts)
+  if (Number.isNaN(date.getTime())) return ''
+  const timeStr = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+  const sameDay =
+    date.toDateString() === new Date().toDateString()
+  return sameDay
+    ? timeStr
+    : `${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date)} · ${timeStr}`
+}
 
 export function ChatMessage({ message }: { message: ChatMessage }) {
+  const { user } = useAuth()
   const isUser = message.role === 'user'
   const authorName = message.user_name?.trim() || 'You'
+  const avatarUrl = isUser
+    ? (message.user_avatar_url ?? user?.avatar_url ?? null)
+    : null
 
   return (
     <motion.div
@@ -30,6 +51,11 @@ export function ChatMessage({ message }: { message: ChatMessage }) {
           <div>
             <div className="mb-1 flex items-center justify-end gap-2">
               <span className="text-[12px] text-[var(--text-3)]">{authorName}</span>
+              {messageTime(message.created_at) ? (
+                <time className="text-[11px] text-[var(--text-3)]">
+                  {messageTime(message.created_at)}
+                </time>
+              ) : null}
             </div>
             <div className="rounded-[var(--radius-lg)] rounded-tr-md bg-accent-grad px-4 py-3 text-[14.5px] leading-relaxed text-white shadow-[var(--shadow-sm)]">
               <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -52,11 +78,21 @@ export function ChatMessage({ message }: { message: ChatMessage }) {
             <div className={message.error ? 'text-[var(--text-2)]' : ''}>
               <MessageContent content={message.content} streaming={message.streaming ?? false} />
             </div>
+            {message.sources?.length ? (
+              <SourceCitations sources={message.sources} />
+            ) : null}
+            {!message.streaming && messageTime(message.created_at) ? (
+              <div className="mt-2 text-right">
+                <time className="text-[11px] text-[var(--text-3)]">
+                  {messageTime(message.created_at)}
+                </time>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
 
-      {isUser ? <Avatar name={authorName} size="sm" /> : null}
+      {isUser ? <Avatar name={authorName} imageUrl={avatarUrl} size="sm" alt="Your profile picture" /> : null}
     </motion.div>
   )
 }

@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { FileText, RefreshCw } from 'lucide-react'
+import { FileText, RefreshCw, Search, SearchX } from 'lucide-react'
 import { useOrg } from '../context/OrgContext'
 import { useDocuments } from '../hooks/useDocuments'
 import { UploadDropzone } from '../components/documents/UploadDropzone'
@@ -9,11 +9,24 @@ import { EmptyState } from '../components/ui/Feedback'
 import { Button } from '../components/ui/Button'
 import { SkeletonRows } from '../components/ui/Feedback'
 import { ApiError } from '../lib/api'
+import type { DocumentStatus } from '../types'
+
+type StatusFilter = 'all' | DocumentStatus
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'completed', label: 'Ready' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'processing', label: 'Processing' },
+  { value: 'failed', label: 'Failed' },
+]
 
 export default function DocumentsPage() {
   const { activeOrg } = useOrg()
   const { documents, loading, error, refresh } = useDocuments(activeOrg?.id ?? null)
   const [refreshing, setRefreshing] = useState(false)
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<StatusFilter>('all')
 
   const handleUploaded = useCallback(() => {
     void refresh()
@@ -27,6 +40,17 @@ export default function DocumentsPage() {
       setRefreshing(false)
     }
   }
+
+  const filteredDocuments = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return documents.filter((d) => {
+      if (filter !== 'all' && d.processing_status !== filter) return false
+      if (q && !d.title.toLowerCase().includes(q)) return false
+      return true
+    })
+  }, [documents, query, filter])
+
+  const hasActiveFilters = query.trim() !== '' || filter !== 'all'
 
   if (!activeOrg) {
     return (
@@ -87,6 +111,48 @@ export default function DocumentsPage() {
               <span className="text-[12.5px] text-[var(--text-3)]">{documents.length} total</span>
             </div>
 
+            <div className="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              <div className="relative min-w-0 flex-1">
+                <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search documents by name…"
+                  className="h-10 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-1)] pl-9 pr-8 text-sm text-[var(--text-1)] placeholder:text-[var(--text-3)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/40"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery('')}
+                    aria-label="Clear search"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 grid h-5 w-5 place-items-center rounded-full text-[var(--text-3)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-1)]"
+                  >
+                    <SearchX size={14} />
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {STATUS_OPTIONS.map((opt) => {
+                  const active = filter === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFilter(opt.value)}
+                      className={`rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        active
+                          ? 'bg-[var(--accent-soft)] text-[var(--accent-hi)]'
+                          : 'text-[var(--text-2)] hover:bg-[var(--hover)] hover:text-[var(--text-1)]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             {error ? (
               <div className="rounded-[var(--radius-lg)] border border-[var(--danger)]/40 bg-[var(--danger-soft)]/40 px-4 py-3 text-sm text-[var(--danger)]">
                 {error instanceof ApiError ? error.message : 'Could not load documents. Try refreshing.'}
@@ -107,10 +173,34 @@ export default function DocumentsPage() {
                 title="No documents yet"
                 description="Upload a PDF, DOCX or TXT file above. Once processed, its contents power your RAG answers."
               />
+            ) : filteredDocuments.length === 0 ? (
+              <EmptyState
+                icon={<Search size={26} />}
+                title="No matching documents"
+                description={
+                  hasActiveFilters
+                    ? 'No documents match your current search or status filter.'
+                    : 'Nothing to show here.'
+                }
+                action={
+                  hasActiveFilters ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setQuery('')
+                        setFilter('all')
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  ) : undefined
+                }
+              />
             ) : (
               <motion.div layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <AnimatePresence>
-                  {documents.map((doc) => (
+                  {filteredDocuments.map((doc) => (
                     <DocumentCard key={doc.id} document={doc} />
                   ))}
                 </AnimatePresence>

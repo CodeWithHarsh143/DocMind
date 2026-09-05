@@ -43,6 +43,9 @@ function toChatMessage(m: ChatSessionMessage): ChatMessage {
     content: m.content,
     user_id: m.user_id ?? null,
     user_name: m.user_name ?? null,
+    user_avatar_url: m.user_avatar_url ?? null,
+    created_at: m.created_at,
+    sources: m.sources?.length ? m.sources : undefined,
   }
 }
 
@@ -53,22 +56,6 @@ export function useChatSessions(orgId: number | undefined): ChatSessionControlle
   const [loading, setLoading] = useState(false)
   const lastOrgRef = useRef<number | null>(null)
   const messagesLoadRef = useRef<string | null>(null)
-
-  // Load the session list whenever the workspace changes.
-  useEffect(() => {
-    if (orgId === undefined || lastOrgRef.current === orgId) return
-    lastOrgRef.current = orgId
-    setLoading(true)
-    setMessages([])
-    setActiveSessionId(null)
-    listSessions(orgId)
-      .then((list) => {
-        setSessions(list)
-        setActiveSessionId(list.length ? latestOf(list)!.id : null)
-      })
-      .catch(() => setSessions([]))
-      .finally(() => setLoading(false))
-  }, [orgId])
 
   const loadMessages = useCallback(
     async (sessionId: string) => {
@@ -85,6 +72,24 @@ export function useChatSessions(orgId: number | undefined): ChatSessionControlle
     },
     [],
   )
+
+  // Load the session list whenever the workspace changes.
+  useEffect(() => {
+    if (orgId === undefined || lastOrgRef.current === orgId) return
+    lastOrgRef.current = orgId
+    setLoading(true)
+    setMessages([])
+    setActiveSessionId(null)
+    listSessions(orgId)
+      .then((list) => {
+        setSessions(list)
+        const next = list.length ? latestOf(list)!.id : null
+        setActiveSessionId(next)
+        if (next) void loadMessages(next)
+      })
+      .catch(() => setSessions([]))
+      .finally(() => setLoading(false))
+  }, [orgId, loadMessages])
 
   const createSession = useCallback(async (): Promise<string> => {
     if (orgId === undefined) return ''
@@ -134,7 +139,12 @@ export function useChatSessions(orgId: number | undefined): ChatSessionControlle
       const now = new Date().toISOString()
       const assistantId = uid()
 
-      const userMsg: ChatMessage = { id: uid(), role: 'user', content: text }
+      const userMsg: ChatMessage = {
+        id: uid(),
+        role: 'user',
+        content: text,
+        created_at: now,
+      }
       const assistantMsg: ChatMessage = {
         id: assistantId,
         role: 'assistant',
