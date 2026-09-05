@@ -85,3 +85,11 @@ class OrganizationUpdate(BaseModel):
         if any(ord(ch) < 32 and ch not in ("\t", "\n", "\r") for ch in v):
             raise ValueError("Description contains unsupported characters.")
         return v
+
+
+class InviteResponse(BaseModel):
+    org_name: str
+    inviter_name: str | None
+    invited_email: str
+    status: str
+    token: str | None = None

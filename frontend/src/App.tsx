@@ -12,6 +12,8 @@ const LandingPage = lazy(() => import('./pages/Landing'))
 const LoginPage = lazy(() => import('./pages/Login'))
 const RegisterPage = lazy(() => import('./pages/Register'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword'))
+const InvitePage = lazy(() => import('./pages/Invite'))
+const InvitationsPage = lazy(() => import('./pages/Invitations'))
 const DashboardPage = lazy(() => import('./pages/Dashboard'))
 const DocumentsPage = lazy(() => import('./pages/Documents'))
 const ChatPage = lazy(() => import('./pages/Chat'))
@@ -72,7 +74,16 @@ export default function App() {
             <ScrollToTop />
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/" element={<Suspense fallback={<PageLoader />}><LandingPage /></Suspense>} />
+                <Route
+                  path="/"
+                  element={
+                    <RedirectIfAuthed>
+                      <Suspense fallback={<PageLoader />}>
+                        <LandingPage />
+                      </Suspense>
+                    </RedirectIfAuthed>
+                  }
+                />
                 <Route
                   path="/login"
                   element={
@@ -104,6 +115,14 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/invite/:token"
+                  element={
+                    <Suspense fallback={null}>
+                      <InvitePage />
+                    </Suspense>
+                  }
+                />
+                <Route
                   path="/server-error"
                   element={
                     <Suspense fallback={null}>
@@ -126,6 +145,14 @@ export default function App() {
                     element={
                       <Suspense fallback={null}>
                         <ProfilePage />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="invitations"
+                    element={
+                      <Suspense fallback={null}>
+                        <InvitationsPage />
                       </Suspense>
                     }
                   />

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Building2, LogOut, MessageSquareText, LayoutDashboard, Files, Sparkles, Users, X } from 'lucide-react'
+import { Building2, LogOut, MessageSquareText, LayoutDashboard, Files, Sparkles, Users, Inbox, X } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useOrg } from '../../context/OrgContext'
 import { useToast } from '../../context/ToastContext'
@@ -24,6 +24,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
     { to: '/app/documents', end: false, label: 'Documents', icon: Files },
     { to: '/app/chat', end: false, label: 'Ask & Chat', icon: MessageSquareText },
     { to: '/app/members', end: false, label: 'Members', icon: Users },
+    { to: '/app/invitations', end: false, label: 'Invitations', icon: Inbox },
     { to: '/app/organization', end: false, label: 'Organization', icon: Building2 },
   ]
 

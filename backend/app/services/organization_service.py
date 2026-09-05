@@ -13,6 +13,7 @@ from app.core.exceptions import (
     MemberNotFoundException,
     YourAreAlreadyAMemberException,
 )
+import secrets
 
 
 class OrganizationService:
@@ -117,6 +118,10 @@ class OrganizationService:
             organization_id=organization_id,
             role=role,
             status=status,
+            invite_token=(
+                secrets.token_urlsafe(32) if status == "pending" else None
+            ),
+            invited_by=current_user.id,
         )
         db.add(membership)
         db.commit()
@@ -134,6 +139,10 @@ class OrganizationService:
             "name": user.name if user else None,
             "avatar_url": user.avatar_url if user else None,
             "joined_at": membership.joined_at,
+            "invited_token": membership.invite_token,
+            "invited_by": membership.invited_by or None,
+            "invited_at": membership.invited_at or None,
+            "organization_name": membership.organization.name,
         }
 
     @staticmethod

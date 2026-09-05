@@ -1,8 +1,9 @@
 import aiofiles
+import logging
 import os
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models.user import User
@@ -17,6 +18,9 @@ from app.schemas.organization import (
     UpdateMemberRole,
 )
 from app.services.organization_service import OrganizationService
+from app.services.email_service import EmailService
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 IMAGE_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
@@ -93,9 +97,25 @@ def invite_member(
     current_user: User = Depends(get_current_user),
 ):
     OrganizationService.require_admin(db, org_id, current_user.id)
-    return OrganizationService.invite_member(
+    placeholder_membership: dict = OrganizationService.invite_member(
         db, org_id, invite_data.email, invite_data.role, current_user
     )
+    if placeholder_membership.invited_token:
+        try:
+            EmailService.send_invite_email(
+                to=placeholder_membership.email,
+                org_name=placeholder_membership.organization_name,
+                inviter_name=current_user.name or current_user.email,
+                invite_token=placeholder_membership.invited_token,
+            )
+        except Exception:
+            # Membership is persisted; a failed notification must not break the invite.
+            logger.info(
+                "Invite email failed to send to %s",
+                placeholder_membership.email,
+                exc_info=True,
+            )
+    return placeholder_membership
 
 
 @router.get("/{org_id}/members", response_model=list[OrganizationMemberResponse])

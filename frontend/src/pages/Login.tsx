@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import type { FormEvent } from 'react'
@@ -20,6 +20,8 @@ export default function LoginPage() {
   const { login } = useAuth()
   const { error: throwError } = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const next = searchParams.get('next')
 
   const email = useField<string>(emailValidator, '')
   const password = useField<string>(requiredValidator('Please enter your password.'), '')
@@ -49,7 +51,7 @@ export default function LoginPage() {
     setCanRetry(false)
     try {
       await login(email.value, password.value)
-      navigate('/app', { replace: true })
+      navigate(next && next.startsWith('/') ? next : '/app', { replace: true })
     } catch (err) {
       const message = friendlyErrorMessage(err, 'Sign in failed.')
       setFormError(message)
