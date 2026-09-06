@@ -21,20 +21,20 @@ export interface AcceptedInvite {
 
 /** Public — fetch invite details for a token (no auth). */
 export async function getInvite(token: string): Promise<Invitation> {
-  return apiFetch<Invitation>(`/invite/${token}`, { auth: false })
+  return apiFetch<Invitation>(`/api/invite/${token}`, { auth: false })
 }
 
 /** List all pending invitations for the signed-in user. */
 export async function listMyInvites(): Promise<Invitation[]> {
-  return apiFetch<Invitation[]>(`/invite/mine`)
+  return apiFetch<Invitation[]>(`/api/invite/mine`)
 }
 
 /** Accept an invitation by token. */
 export async function acceptInvite(token: string): Promise<AcceptedInvite> {
-  return apiFetch<AcceptedInvite>(`/invite/${token}/accept`, { method: 'POST' })
+  return apiFetch<AcceptedInvite>(`/api/invite/${token}/accept`, { method: 'POST' })
 }
 
 /** Reject/decline an invitation by token. */
 export async function rejectInvite(token: string): Promise<void> {
-  await apiFetch(`/invite/${token}/reject`, { method: 'POST' })
+  await apiFetch(`/api/invite/${token}/reject`, { method: 'POST' })
 }

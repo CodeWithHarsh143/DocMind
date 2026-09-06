@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     resend_api_key: str = ""
+    email_provider: str = "resend"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_pass: str = ""
     frontend_base_url: str = "http://localhost:5173"
     email_from: str = "DocMind <onboarding@resend.dev>"
     model_config = SettingsConfigDict(

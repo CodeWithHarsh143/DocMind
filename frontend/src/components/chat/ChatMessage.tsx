@@ -24,9 +24,10 @@ function messageTime(ts?: string | null): string {
 export function ChatMessage({ message }: { message: ChatMessage }) {
   const { user } = useAuth()
   const isUser = message.role === 'user'
-  const authorName = message.user_name?.trim() || 'You'
+  const isOwn = isUser && message.user_id != null && message.user_id === user?.id
+  const authorName = message.user_name?.trim() || (isOwn ? 'You' : 'Member')
   const avatarUrl = isUser
-    ? (message.user_avatar_url ?? user?.avatar_url ?? null)
+    ? (isOwn ? (message.user_avatar_url ?? user?.avatar_url ?? null) : message.user_avatar_url ?? null)
     : null
 
   return (

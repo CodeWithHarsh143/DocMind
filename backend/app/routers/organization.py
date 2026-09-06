@@ -100,20 +100,19 @@ def invite_member(
     placeholder_membership: dict = OrganizationService.invite_member(
         db, org_id, invite_data.email, invite_data.role, current_user
     )
-    if placeholder_membership.invited_token:
+    if placeholder_membership.get("invited_token"):
         try:
             EmailService.send_invite_email(
-                to=placeholder_membership.email,
-                org_name=placeholder_membership.organization_name,
+                to=placeholder_membership["email"],
+                org_name=placeholder_membership["organization_name"],
                 inviter_name=current_user.name or current_user.email,
-                invite_token=placeholder_membership.invited_token,
+                invite_token=placeholder_membership["invited_token"],
             )
         except Exception:
             # Membership is persisted; a failed notification must not break the invite.
-            logger.info(
+            logger.exception(
                 "Invite email failed to send to %s",
-                placeholder_membership.email,
-                exc_info=True,
+                placeholder_membership["email"],
             )
     return placeholder_membership
 

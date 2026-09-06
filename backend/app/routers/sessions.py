@@ -88,7 +88,11 @@ def get_chat_messages(
     )
     result = []
     for m in messages:
-        m.user_name = m.user.name if m.user else None
+        m.user_name = (
+            m.user.name
+            if m.user and m.user.name
+            else (m.user.email.split("@")[0] if m.user else None)
+        )
         m.user_avatar_url = m.user.avatar_url if m.user else None
         result.append(m)
     return result

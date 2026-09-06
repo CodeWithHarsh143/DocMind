@@ -39,6 +39,6 @@ class OrganizationMember(Base):
     invite_token = Column(String, unique=True, nullable=True)
     invited_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     invited_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    user = relationship("User", back_populates="organization_members")
+    user = relationship("User", back_populates="organization_members", foreign_keys=[user_id])
     inviter = relationship("User", foreign_keys=[invited_by])
     organization = relationship("Organization", back_populates="members")

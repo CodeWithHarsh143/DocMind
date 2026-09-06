@@ -105,11 +105,16 @@ class OrganizationService:
             db, organization_id, invited_user.id
         ):
             raise AlreadyMemberException()
+        is_unregistered: bool = invited_user is None or (
+            invited_user.hashed_password is None
+            and not invited_user.organization_members
+        )
         status: str = ""
-        if not invited_user:
-            invited_user = User(email=email, hashed_password=None)
-            db.add(invited_user)
-            db.flush()
+        if is_unregistered:
+            if invited_user is None:
+                invited_user = User(email=email, hashed_password=None)
+                db.add(invited_user)
+                db.flush()
             status = "pending"
         else:
             status = "active"

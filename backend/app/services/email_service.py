@@ -1,14 +1,50 @@
+import logging
+import smtplib
+from email.message import EmailMessage
+
+import resend
 from app.config import settings
 from resend import Emails
 from resend import Emails as EmailTypes
+
+logger = logging.getLogger(__name__)
+
+resend.api_key = settings.resend_api_key
 
 SendParams = EmailTypes.SendParams
 
 
 class EmailService:
     @staticmethod
-    def _send(params: SendParams) -> None:
+    def _send_smtp(params: SendParams) -> None:
+        if not settings.smtp_host or not settings.smtp_user or not settings.smtp_pass:
+            raise RuntimeError(
+                "EMAIL_PROVIDER=smtp requires SMTP_HOST, SMTP_USER, and SMTP_PASS"
+            )
+        msg = EmailMessage()
+        msg["Subject"] = params["subject"]
+        msg["From"] = params["from"]
+        msg["To"] = ", ".join(params["to"])
+        msg.set_content("This email requires an HTML-compatible client.")
+        msg.add_alternative(params["html"], subtype="html")
+        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as server:
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_pass)
+            server.send_message(msg)
+
+    @staticmethod
+    def _send_resend(params: SendParams) -> None:
+        if not settings.resend_api_key:
+            logger.warning("RESEND_API_KEY not set; skipping email to %s", params["to"])
+            return
         Emails.send(params)
+
+    @staticmethod
+    def _send(params: SendParams) -> None:
+        if settings.email_provider == "smtp":
+            EmailService._send_smtp(params)
+            return
+        EmailService._send_resend(params)
 
     @staticmethod
     def build_otp_email(code: str) -> str:
