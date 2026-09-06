@@ -9,7 +9,7 @@ from app.schemas.organization import (
     OrganizationMemberResponse,
 )
 
-router = APIRouter(prefix="/invite", tags=["invites"])
+router = APIRouter(prefix="/api/invite", tags=["invites"])
 
 
 @router.get("/mine", response_model=list[InviteResponse])

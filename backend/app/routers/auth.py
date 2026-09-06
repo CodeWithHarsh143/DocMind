@@ -64,6 +64,7 @@ def get_current_user(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+    default_name = user_data.email.split("@")[0]
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         if existing_user.hashed_password is not None:
@@ -72,6 +73,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
                 detail="Email already registered",
             )
         existing_user.hashed_password = hash_password(user_data.password)
+        existing_user.name = existing_user.name or default_name
         db.query(OrganizationMember).filter(
             OrganizationMember.user_id == existing_user.id,
             OrganizationMember.status == "pending",
@@ -81,7 +83,9 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         return existing_user
 
     hashed = hash_password(user_data.password)
-    new_user = User(email=user_data.email, hashed_password=hashed)
+    new_user = User(
+        email=user_data.email, hashed_password=hashed, name=default_name
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)

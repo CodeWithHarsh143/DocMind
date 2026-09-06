@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Column, DateTime
+from sqlalchemy import Integer, String, Column, DateTime, ForeignKey
 from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -13,7 +13,11 @@ class User(Base):
     name = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
-    organization_members = relationship("OrganizationMember", back_populates="user")
+    organization_members = relationship(
+        "OrganizationMember",
+        back_populates="user",
+        foreign_keys="OrganizationMember.user_id",
+    )
     documents = relationship("Document", back_populates="owner")
     chat_sessions = relationship("ChatSession", back_populates="owner")
     chat_messages = relationship("ChatMessage", back_populates="user")

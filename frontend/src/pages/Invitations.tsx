@@ -17,7 +17,7 @@ export default function InvitationsPage() {
 
   useEffect(() => {
     listMyInvites()
-      .then(setInvites)
+      .then((list) => setInvites(Array.isArray(list) ? list : []))
       .catch(() => throwError('Could not load invites'))
       .finally(() => setLoading(false))
   }, [throwError])

@@ -11,6 +11,7 @@ export default defineConfig({
       '/documents': 'http://localhost:8000',
       '/users': 'http://localhost:8000',
       '/sessions': 'http://localhost:8000',
+      '/api/invite': 'http://localhost:8000',
       '/uploads': 'http://localhost:8000',
     },
   },
