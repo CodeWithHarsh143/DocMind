@@ -64,8 +64,10 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     const full: OrganizationWithMembers = { ...created, members: [] }
     setOrganizations((prev) => [...prev, full])
     localStorage.setItem(ACTIVE_ORG_KEY, String(full.id))
+    // Refetch so the new org carries its real membership (admin role for the creator).
+    await refreshOrganizations()
     return full
-  }, [])
+  }, [refreshOrganizations])
 
   const setActiveOrganization = useCallback((org: OrganizationWithMembers | null) => {
     if (org) {
