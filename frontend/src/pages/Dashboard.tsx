@@ -145,6 +145,11 @@ export default function DashboardPage() {
             <p className="mt-1 text-[14px] text-[var(--text-3)]">
               Here's what's happening in <span className="font-medium text-[var(--text-2)]">{activeOrg.name}</span>.
             </p>
+            {activeOrg.description ? (
+              <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-[var(--text-3)]">
+                {activeOrg.description}
+              </p>
+            ) : null}
           </div>
           <Link to="/app/chat">
             <Button leftIcon={<MessageSquareText size={16} />}>

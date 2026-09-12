@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage, ChatSession, ChatSessionMessage } from '../types'
 import { uid } from '../lib/utils'
+import { useAuth } from '../context/AuthContext'
 import {
   createSession as apiCreate,
   deleteSession as apiDelete,
@@ -50,6 +51,7 @@ function toChatMessage(m: ChatSessionMessage): ChatMessage {
 }
 
 export function useChatSessions(orgId: number | undefined): ChatSessionController {
+  const { user } = useAuth()
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -143,6 +145,9 @@ export function useChatSessions(orgId: number | undefined): ChatSessionControlle
         id: uid(),
         role: 'user',
         content: text,
+        user_id: user?.id ?? null,
+        user_name: user?.name?.trim() || (user?.email ?? null),
+        user_avatar_url: user?.avatar_url ?? null,
         created_at: now,
       }
       const assistantMsg: ChatMessage = {
