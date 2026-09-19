@@ -2,21 +2,24 @@
 
 Prerequisites
 -------------
-* A running PostgreSQL server with a role that can ``CREATE SCHEMA`` on the
-  target database and the ``vector`` extension available (or installable).
-* A running Redis server. Integration tests use real Redis (default db 1,
-  which is flushed at session start/end — keep it dedicated to tests).
-
-Defaults are the local dev stack (``docmind1234``/``docmind123`` at
-``localhost``, schema ``docmind_test``, Redis db 1). Override them so the
-suite can run anywhere::
+* Service/integration tests need a running PostgreSQL server (role able to
+  ``CREATE SCHEMA``, ``vector`` extension available) and a running Redis
+  server. Pure unit tests (cache via fakeredis, schemas, security, email) run
+  without either.
+* Defaults are the local dev stack (``docmind1234``/``docmind123`` at
+  ``localhost``, schema ``docmind_test``, Redis db 1). Override them so the
+  suite can run anywhere::
 
     TEST_BASE_DATABASE_URL=postgresql://user:pass@host:5432/docmind
     TEST_SCHEMA=my_test_schema
     TEST_REDIS_URL=redis://localhost:6379/15
     SECRET_KEY=anything-unique
 
-Run from ``backend/`` with ``.venv/bin/python -m pytest``.
+Run from ``backend/`` with the project venv (a plain ``pytest`` may resolve
+to a different interpreter that lacks the dependencies)::
+
+    .venv/bin/python -m pytest            # whole suite
+    .venv/bin/python -m pytest unit/      # unit tests only
 
 Environment pinning
 -------------------
@@ -114,9 +117,15 @@ def _ensure_test_schema() -> None:
     conn.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def _test_database_setup():
-    """Create the test schema/tables once per session and wipe Redis."""
+    """Create the test schema/tables once per session and wipe Redis.
+
+    Deliberately *not* autouse: it is only requested through ``test_engine``,
+    which only ``db_session``/``client`` depend on. Pure unit tests (schemas,
+    cache via fakeredis, security, email) therefore run without a live
+    Postgres/Redis.
+    """
     _ensure_test_schema()
 
     # Importing app.main builds the app and runs Base.metadata.create_all
