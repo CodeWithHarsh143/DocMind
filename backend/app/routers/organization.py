@@ -86,7 +86,8 @@ def add_member(
     role: RoleEnum = RoleEnum.USER,
 ):
     OrganizationService.require_admin(db, org_id, current_user.id)
-    return OrganizationService.add_member(db, org_id, user_id, role)
+    membership = OrganizationService.add_member(db, org_id, user_id, role)
+    return OrganizationService._member_dict(db, membership)
 
 
 @router.post("/{org_id}/members", response_model=OrganizationMemberResponse)
