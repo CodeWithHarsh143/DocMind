@@ -1,4 +1,4 @@
-# DocMind
+# DocMind(website)
 
 **Ask questions over your team's documents and get grounded, cited answers.**
 
